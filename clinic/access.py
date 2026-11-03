@@ -1,8 +1,8 @@
 """Who may hand out clinic roles, and who may see the clinic at all.
 
 * Clinic roles can only be assigned or removed by the clinic access administrator: the user named in
-  `clinic_access_admin` in the site's site_config.json (System Managers cannot edit that file). Until it is set,
-  only Administrator can do it.
+  `clinic_access_admin` in the site's site_config.json (System Managers cannot edit that file) or, when that is not
+  set, the user named in Clinic Settings > Clinic Access Administrator. Until one is set, only Administrator can do it.
 * Clinic data is only readable by holders of a clinic role. System Manager has no access to the clinic doctypes,
   and nobody else can add permissions to them.
 """
@@ -15,8 +15,13 @@ from clinic.setup import ROLES
 CLINIC_ROLES = set(ROLES)
 
 
+def configured_in_site_config():
+	return bool(frappe.conf.get("clinic_access_admin"))
+
+
 def access_admin():
-	return frappe.conf.get("clinic_access_admin")
+	"""The site config wins (System Managers cannot edit it); otherwise the person named in Clinic Settings."""
+	return frappe.conf.get("clinic_access_admin") or frappe.db.get_single_value("Clinic Settings", "access_administrator") or None
 
 
 def can_manage_access(user=None):
@@ -30,9 +35,17 @@ def _skip():
 
 
 def _deny(what):
-	frappe.throw(
-		_("Only the clinic access administrator can {0}.").format(what), frappe.PermissionError
-	)
+	"""Say why: an unset site config is the usual cause, so name the key to set."""
+	admin = access_admin()
+	if not admin:
+		reason = _(
+			"No clinic access administrator is set on this site. A Clinic Manager can claim it in Clinic Settings (Clinic Access Administrator), or add clinic_access_admin to the site config."
+		)
+	else:
+		reason = _("You are signed in as {0}, which is not the clinic access administrator. The administrator can be changed in Clinic Settings by the current administrator.").format(
+			frappe.session.user
+		)
+	frappe.throw(_("Only the clinic access administrator can {0}. {1}").format(what, reason), frappe.PermissionError)
 
 
 def guard_user_roles(doc, method=None):

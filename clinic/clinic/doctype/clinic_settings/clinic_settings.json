@@ -14,6 +14,8 @@
 		"cost_center",
 		"first_aid_item_group",
 		"idle_lock_minutes",
+		"access_section",
+		"access_administrator",
 		"section_2",
 		"po_box",
 		"head_office",
@@ -140,6 +142,18 @@
 			"label": "Cost Centre for Stock Entries",
 			"options": "Cost Center",
 			"description": "Used for the stock entries the clinic creates. Leave empty to use 'Clinic - <company abbreviation>' or the company default."
+		},
+		{
+			"fieldname": "access_section",
+			"fieldtype": "Section Break",
+			"label": "Access"
+		},
+		{
+			"fieldname": "access_administrator",
+			"fieldtype": "Link",
+			"label": "Clinic Access Administrator",
+			"options": "User",
+			"description": "The only person who can give or take away clinic roles. While this is empty, a Clinic Manager can claim it for themselves; after that only this person can change it. A clinic_access_admin entry in the site config, if there is one, always takes priority."
 		}
 	],
 	"links": [],
