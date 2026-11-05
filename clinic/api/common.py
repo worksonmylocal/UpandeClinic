@@ -2,7 +2,7 @@
 
 import frappe
 from frappe import _
-from frappe.utils import cint, flt, get_datetime, now_datetime, nowdate
+from frappe.utils import add_days, cint, flt, get_datetime, getdate, now_datetime, nowdate
 
 from clinic.utils import age_text
 
@@ -268,3 +268,13 @@ def clinic_profile():
 			"phone", "email", "report_footer_note",
 		)
 	}
+
+
+def period_range(period):
+	"""(first day, last day) for the Day / Week / Month filter on the Insights tabs: today, this week (from Monday), this month."""
+	today = getdate(nowdate())
+	if period == "week":
+		return add_days(today, -today.weekday()), today
+	if period == "month":
+		return today.replace(day=1), today
+	return today, today

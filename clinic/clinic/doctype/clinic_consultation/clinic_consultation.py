@@ -1,7 +1,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import getdate, nowdate
+from frappe.utils import getdate, now_datetime, nowdate
 
 from clinic import stock
 from clinic.clinic.doctype.clinic_visit.clinic_visit import CLOSED_STATUSES, set_visit_status
@@ -167,6 +167,8 @@ class ClinicConsultation(Document):
 	def finalise(self, visit_status):
 		self.create_follow_up_appointment()
 		self.status = "Completed"
+		if not self.ended_on:  # the first time it is closed; reopening for results does not move it
+			self.ended_on = now_datetime()
 		self.save()
 		set_visit_status(self.visit, visit_status)
 

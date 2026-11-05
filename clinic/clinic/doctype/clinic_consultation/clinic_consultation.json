@@ -15,6 +15,7 @@
 		"age_years",
 		"department",
 		"consultation_date",
+		"ended_on",
 		"doctor",
 		"status",
 		"sec_triage",
@@ -177,6 +178,14 @@
 			"label": "Consultation Date",
 			"default": "Now",
 			"reqd": 1
+		},
+		{
+			"fieldname": "ended_on",
+			"fieldtype": "Datetime",
+			"label": "Ended On",
+			"read_only": 1,
+			"no_copy": 1,
+			"description": "When the doctor first completed the encounter or sent the patient to the pharmacy"
 		},
 		{
 			"fieldname": "doctor",

@@ -22,18 +22,18 @@
   <div class="tabpanel on" id="tab-queue">
     <div class="row-2-eq">
       <div class="card"><div class="card__head"><h3>Waiting for Triage</h3><span class="meta" id="waiting-meta"></span></div><div class="queue" id="waiting"><div class="skel"></div></div></div>
-      <div class="card"><div class="card__head"><h3>Sent Onward Today</h3><span class="meta" id="recent-meta"></span></div><div class="queue" id="recent"><div class="skel"></div></div></div>
+      <div class="card"><div class="card__head"><h3>Patient Journey</h3><span class="meta" id="journey-meta">Checked in on the clinic biometric today</span></div><div class="queue" id="journey"><div class="skel"></div></div></div>
     </div>
+    <div class="card"><div class="card__head"><h3>Sent Onward Today</h3><span class="meta" id="recent-meta"></span></div><div class="queue" id="recent"><div class="skel"></div></div></div>
   </div>
   <div class="tabpanel" id="tab-insights">
+    <div class="ins-bar"><div id="period"></div><span class="meta" id="range-meta" style="font-size:12px;color:var(--ink-mute)"></span></div>
     <div class="row-2-eq">
-      <div class="card chart-wrap"><div class="card__head"><h3>Arrivals by Hour — Today</h3></div><canvas id="hour-chart" height="220"></canvas></div>
-      <div class="card chart-wrap"><div class="card__head"><h3>Visits — Last 7 Days</h3></div><canvas id="day-chart" height="220"></canvas></div>
+      <div class="card"><div class="card__head"><h3>Door to Triage Wait</h3><span class="meta" id="door-meta"></span></div><div class="kpi-grid" id="door-kpis" style="margin-bottom:12px"></div><div id="door-bars"><div class="skel"></div></div></div>
+      <div class="card"><div class="card__head"><h3>Triage Priority</h3><span class="meta" id="priority-meta"></span></div><div class="ring"><canvas id="priority-chart" width="260" height="260"></canvas><div class="ring__mid" id="priority-mid"></div></div><div class="chips" id="priority-chips"></div></div>
     </div>
-    <div class="row-2-eq">
-      <div class="card chart-wrap"><div class="card__head"><h3>Triage Priority — Last 7 Days</h3></div><canvas id="priority-chart" height="220"></canvas></div>
-      <div class="card"><div class="card__head"><h3>Screening Flags — Last 7 Days</h3><span class="meta" id="flag-meta"></span></div><div id="flags"><div class="skel"></div></div></div>
-    </div>
+    <div class="card"><div class="card__head"><h3>Screening Flags</h3><span class="meta" id="flag-meta"></span></div><div id="flags"><div class="skel"></div></div><div class="lvl-legend"><span><i style="background:var(--good)"></i>Under 10% of patients</span><span><i style="background:#e68a00"></i>10–25%</span><span><i style="background:var(--bad)"></i>Over 25%</span></div></div>
+    <div class="card chart-wrap"><div class="card__head"><h3>Arrivals by Hour</h3></div><div style="position:relative;height:260px"><canvas id="hour-chart"></canvas></div></div>
   </div>
 </div>
 <script>window.CLINIC = { csrf: {{ csrf_token | tojson }}, user: {{ frappe.session.user | tojson }} };</script>

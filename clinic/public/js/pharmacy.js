@@ -13,6 +13,7 @@
     $("#refresh").addEventListener("click", () => { loadAll(); toast("Refreshed"); });
 
     let dash;
+    const period = Desk.periodToggle($("#period"), () => loadInsights(), "month");
 
     async function loadAll() {
         dash = await call("pharmacy.dashboard");
@@ -52,9 +53,21 @@
     }
 
     async function loadInsights() {
-        const d = await call("pharmacy.insights");
-        hbars($("#top-drugs"), d.top_drugs, { format: (v, r) => `${num(v)} <span style="color:var(--ink-mute)">(${r.prescriptions}×)</span>` });
-        chart("day-chart", { type: "bar", data: { labels: d.by_day.map((r) => r.day.slice(5)), datasets: Desk.stackedDatasets(d.by_day) }, options: { ...Desk.stackedOptions, plugins: { legend: { display: false } } } });
+        const d = await call("pharmacy.insights", { period: period.value });
+        const WORD = { day: "today", week: "this week", month: "this month" }[period.value];
+        const P = Desk.PALETTE, t = d.totals, drugs = d.top_drugs;
+        $("#range-meta").textContent = d.range.from === d.range.to ? Desk.dateOf(d.range.from) : `${d.range.from} → ${d.range.to}`;
+        const ico = (path) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
+        Desk.livelyTiles($("#drug-totals"), [
+            { label: "Prescriptions filled", value: t.dispensings, unit: WORD, color: P[0], icon: ico('<path d="M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>') },
+            { label: "Units dispensed", value: Math.round(t.units), unit: "all drugs", color: P[2], icon: ico('<rect x="3" y="9" width="18" height="6" rx="3" transform="rotate(-35 12 12)"/>') },
+            { label: "Different drugs", value: t.drugs, unit: "handed out", color: P[1], icon: ico('<path d="M12 3l9 5v8l-9 5-9-5V8z"/>') },
+        ]);
+        $("#drug-meta").textContent = drugs.length ? `Top ${drugs.length} · units handed out ${WORD}` : "";
+        Desk.ranked($("#top-drugs"), drugs.map((r) => ({ label: r.label, value: r.qty, sub: `${r.prescriptions}× · ${r.patients} patient${r.patients === 1 ? "" : "s"}` })));
+        const units = drugs.reduce((a, r) => a + Number(r.qty), 0);
+        $("#drug-mid").innerHTML = `<b>${num(Math.round(units))}</b><span>Units</span>`;
+        chart("drug-chart", { type: "doughnut", data: { labels: drugs.map((r) => r.label), datasets: [{ data: drugs.length ? drugs.map((r) => r.qty) : [1], backgroundColor: drugs.length ? drugs.map((_, i) => P[i % P.length]) : ["rgba(10,10,10,0.06)"], borderWidth: 4, borderColor: "#fff", hoverOffset: 8, borderRadius: 8 }] }, options: { cutout: "68%", plugins: { legend: { display: false }, tooltip: { enabled: drugs.length > 0 } } } });
     }
 
     // ------------------------------------------------------------ dispensing

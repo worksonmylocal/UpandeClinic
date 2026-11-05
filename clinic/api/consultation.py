@@ -9,6 +9,7 @@ from clinic.api.common import (
 	clean,
 	minutes_since,
 	patient_card,
+	period_range,
 	pick,
 	require,
 	to_number,
@@ -139,50 +140,81 @@ def dashboard():
 
 
 @frappe.whitelist()
-def insights():
+def insights(period="day"):
+	"""Doctor insights for today, this week or this month."""
 	require("consultation")
+	first, last = period_range(period)
+	p = {"a": f"{first} 00:00:00", "b": f"{last} 23:59:59"}
 	top_diagnoses = frappe.db.sql(
 		"""
-		SELECT d.diagnosis AS label,
-			COUNT(DISTINCT IF(c.patient_type = 'Employee', c.name, NULL)) AS employees,
-			COUNT(DISTINCT c.name) AS total
+		SELECT d.diagnosis AS label, COUNT(DISTINCT c.name) AS total
 		FROM `tabClinic Consultation Diagnosis` d JOIN `tabClinic Consultation` c ON c.name = d.parent
-		WHERE DATE(c.consultation_date) >= %s
+		WHERE c.consultation_date BETWEEN %(a)s AND %(b)s
 		GROUP BY d.diagnosis ORDER BY total DESC LIMIT 8
 		""",
-		add_days(nowdate(), -29),
-		as_dict=True,
-	)
-	by_day = frappe.db.sql(
-		"""
-		SELECT DATE(consultation_date) AS day,
-			SUM(patient_type = 'Employee') AS employees
-		FROM `tabClinic Consultation` WHERE DATE(consultation_date) >= %s
-		GROUP BY DATE(consultation_date) ORDER BY day
-		""",
-		add_days(nowdate(), -13),
+		p,
 		as_dict=True,
 	)
 	workload = frappe.db.sql(
 		"""
 		SELECT COUNT(*) AS consultations,
+			COUNT(DISTINCT patient) AS patients,
 			IFNULL(SUM(refer_out), 0) AS referrals,
 			IFNULL(SUM(work_related), 0) AS work_related,
-			IFNULL(SUM(sick_leave_days), 0) AS sick_days,
 			IFNULL(SUM(follow_up_required), 0) AS follow_ups,
+			IFNULL(SUM(sick_leave_days), 0) AS sick_days,
+			IFNULL(SUM(light_duty_days), 0) AS light_duty_days,
+			IFNULL(SUM(sick_leave_days > 0), 0) AS sick_offs,
+			IFNULL(SUM(light_duty_days > 0), 0) AS light_duties,
+			COUNT(DISTINCT IF(sick_leave_days > 0, patient, NULL)) AS sick_employees,
 			(SELECT COUNT(*) FROM `tabClinic Investigation Request` r JOIN `tabClinic Consultation` c2
-				ON c2.name = r.parent WHERE DATE(c2.consultation_date) >= %(since)s) AS investigations,
-			(SELECT COUNT(*) FROM `tabClinic Prescription Item` p JOIN `tabClinic Consultation` c3
-				ON c3.name = p.parent WHERE DATE(c3.consultation_date) >= %(since)s) AS prescriptions
-		FROM `tabClinic Consultation` WHERE DATE(consultation_date) >= %(since)s
+				ON c2.name = r.parent WHERE c2.consultation_date BETWEEN %(a)s AND %(b)s) AS investigations,
+			(SELECT COUNT(*) FROM `tabClinic Prescription Item` x JOIN `tabClinic Consultation` c3
+				ON c3.name = x.parent WHERE c3.consultation_date BETWEEN %(a)s AND %(b)s) AS prescriptions
+		FROM `tabClinic Consultation` WHERE consultation_date BETWEEN %(a)s AND %(b)s
 		""",
-		{"since": add_days(nowdate(), -29)},
+		p,
 		as_dict=True,
 	)[0]
+	# From when the consultation started to when the doctor first closed it (completed it or sent the patient on)
+	timed = frappe.db.sql(
+		"""
+		SELECT TIMESTAMPDIFF(MINUTE, consultation_date, ended_on) AS minutes FROM `tabClinic Consultation`
+		WHERE consultation_date BETWEEN %(a)s AND %(b)s AND ended_on IS NOT NULL AND ended_on >= consultation_date
+		""",
+		p,
+		pluck="minutes",
+	)
+	if period == "day":
+		rows = frappe.db.sql(
+			"""SELECT HOUR(consultation_date) AS k, COUNT(*) AS n FROM `tabClinic Consultation`
+			WHERE consultation_date BETWEEN %(a)s AND %(b)s GROUP BY k""",
+			p,
+			as_dict=True,
+		)
+		series = {"labels": [f"{h:02d}:00" for h in range(5, 22)], "values": [next((r.n for r in rows if r.k == h), 0) for h in range(5, 22)]}
+	else:
+		rows = frappe.db.sql(
+			"""SELECT DATE(consultation_date) AS k, COUNT(*) AS n FROM `tabClinic Consultation`
+			WHERE consultation_date BETWEEN %(a)s AND %(b)s GROUP BY k""",
+			p,
+			as_dict=True,
+		)
+		days = [add_days(first, i) for i in range((last - first).days + 1)]
+		series = {"labels": [d.strftime("%d %b") for d in days], "values": [next((r.n for r in rows if r.k == d), 0) for d in days]}
 	return {
+		"period": period,
+		"range": {"from": str(first), "to": str(last)},
 		"top_diagnoses": top_diagnoses,
-		"by_day": [{**row, "day": str(row.day)} for row in by_day],
+		"diagnosed": sum(r.total for r in top_diagnoses),
 		"workload": workload,
+		"duration": {
+			"measured": len(timed),
+			"average": round(sum(timed) / len(timed)) if timed else None,
+			"shortest": min(timed) if timed else None,
+			"longest": max(timed) if timed else None,
+		},
+		"series": series,
 	}
 
 

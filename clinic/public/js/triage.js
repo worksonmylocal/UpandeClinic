@@ -15,6 +15,7 @@
     $("#new-visit").addEventListener("click", startCheckIn);
 
     let data;
+    const period = Desk.periodToggle($("#period"), () => loadInsights(), "day");
 
     // ------------------------------------------------------------ queue
     async function loadAll() {
@@ -22,6 +23,7 @@
         renderKpis(data.kpis);
         renderWaiting(data.waiting);
         renderRecent(data.recent);
+        renderJourney(data.arrived);
         if ($("#tab-insights").classList.contains("on")) loadInsights();
     }
 
@@ -72,22 +74,67 @@
         $$("#recent [data-triage]").forEach((b) => b.addEventListener("click", () => openTriage(b.dataset.triage)));
     }
 
+    // Where each person who checked in at the door is on their way through the clinic
+    const STAGE = { "Awaiting triage": "warn", "In consultation": "info", "In pharmacy": "info", Completed: "good" };
+    function renderJourney(rows) {
+        $("#journey-meta").textContent = rows.length ? `${rows.length} checked in today` : "Checked in on the clinic biometric today";
+        $("#journey").innerHTML = rows.length ? rows.map((r) => `
+            <div class="qcard${r.visit && r.stage === "Awaiting triage" ? " qcard--link" : ""}" ${r.visit && r.stage === "Awaiting triage" ? `data-triage="${esc(r.visit)}"` : ""}><div class="qcard__stripe"></div>
+                <div><div class="qcard__name">${esc(r.patient_name)}</div>
+                <div class="qcard__meta">${r.employee ? esc(r.employee) + " · " : ""}${r.department ? esc(r.department) + " · " : ""}in ${timeOf(r.time_in)}${r.time_out ? ` · out ${timeOf(r.time_out)}` : ""}</div></div>
+                <div class="qcard__side">${r.wait_minutes != null ? wait(r.wait_minutes, 15, 30) : ""}${pill(r.stage, STAGE[r.stage] || "mute")}</div></div>`).join("")
+            : empty("No one has checked in at the clinic yet today.");
+        $$("#journey [data-triage]").forEach((c) => c.addEventListener("click", () => openTriage(c.dataset.triage)));
+    }
+
     // ------------------------------------------------------------ insights
     async function loadInsights() {
-        const d = await call("triage.insights");
-        const hours = Array.from({ length: 24 }, (_, h) => h).filter((h) => h >= 5 && h <= 21);
-        const byHour = Object.fromEntries(d.by_hour.map((r) => [r.hour, r.visits]));
-        chart("hour-chart", { type: "bar", data: { labels: hours.map((h) => `${h}:00`), datasets: [{ label: "Arrivals", data: hours.map((h) => byHour[h] || 0), backgroundColor: COLORS.ink, borderRadius: 6, maxBarThickness: 26 }] }, options: { plugins: { legend: { display: false } } } });
-        chart("day-chart", { type: "bar", data: { labels: d.by_day.map((r) => r.day.slice(5)), datasets: Desk.stackedDatasets(d.by_day) }, options: { ...Desk.stackedOptions, plugins: { legend: { display: false } } } });
-        const pc = { Routine: COLORS.good, Urgent: COLORS.warn, Emergency: COLORS.bad };
-        chart("priority-chart", { type: "doughnut", data: { labels: d.priority.map((r) => r.label), datasets: [{ data: d.priority.map((r) => r.value), backgroundColor: d.priority.map((r) => pc[r.label]), borderWidth: 0 }] }, options: { plugins: { legend: { position: "right" } } } });
+        const d = await call("triage.insights", { period: period.value });
+        const WORD = { day: "today", week: "this week", month: "this month" }[period.value];
+        $("#range-meta").textContent = d.range.from === d.range.to ? Desk.dateOf(d.range.from) : `${d.range.from} → ${d.range.to}`;
+
+        // Door to triage: green within the target, orange up to double it, red beyond
+        const w = d.door_to_triage, LV = Desk.LEVEL;
+        $("#door-meta").textContent = w.measured ? `${w.measured} patient${w.measured === 1 ? "" : "s"} ${WORD}` : "";
+        kpis($("#door-kpis"), [
+            { label: "Average", value: Desk.duration(w.average), cls: !w.measured ? "" : w.average <= w.target ? "good" : w.average <= w.target * 2 ? "warn" : "bad", unit: `Target ${w.target} min` },
+            { label: "Longest", value: Desk.duration(w.longest), cls: w.longest > w.target * 2 ? "bad" : "" },
+            { label: "Within target", value: `${w.within_target}%`, cls: !w.measured ? "" : w.within_target >= 80 ? "good" : w.within_target >= 50 ? "warn" : "bad", unit: w.measured ? `${w.from_door} timed from the door` : "" },
+        ]);
+        const bmax = Math.max(...w.buckets.map((b) => b.value), 1);
+        $("#door-bars").innerHTML = w.measured ? w.buckets.map((b) => `<div class="hb"><div class="hb__name">${esc(b.label)}</div>
+            <div class="hb__lane"><div class="hb__est"></div><div class="hb__act ${b.level}" style="width:${b.value / bmax * 100}%"></div></div>
+            <div class="hb__pct">${b.value}</div></div>`).join("") + `<div class="lvl-legend"><span><i style="background:${LV.good}"></i>On target</span><span><i style="background:${LV.warn}"></i>Slow</span><span><i style="background:${LV.bad}"></i>Too long</span></div>`
+            : empty("No patients had vitals taken in this period.");
+
+        // Triage priority ring
+        const pc = { Routine: LV.good, Urgent: LV.warn, Emergency: LV.bad };
+        const ptotal = d.priority.reduce((a, r) => a + r.value, 0);
+        $("#priority-meta").textContent = ptotal ? `${ptotal} triaged` : "";
+        $("#priority-mid").innerHTML = `<b>${ptotal}</b><span>Triaged</span>`;
+        $("#priority-chips").innerHTML = ["Routine", "Urgent", "Emergency"].map((k) => {
+            const n = (d.priority.find((r) => r.label === k) || {}).value || 0;
+            return `<span class="chip" style="--c:${pc[k]}"><i></i>${k} <b>${n}</b></span>`;
+        }).join("");
+        chart("priority-chart", { type: "doughnut", data: { labels: d.priority.map((r) => r.label), datasets: [{ data: ptotal ? d.priority.map((r) => r.value) : [1], backgroundColor: ptotal ? d.priority.map((r) => pc[r.label]) : ["rgba(10,10,10,0.06)"], borderWidth: 4, borderColor: "#fff", hoverOffset: 8, borderRadius: 8 }] }, options: { cutout: "70%", plugins: { legend: { display: false }, tooltip: { enabled: !!ptotal } } } });
+
+        // Screening flags: green under 10% of patients, orange to 25%, red beyond
         const f = d.flags, total = f.total || 0;
-        $("#flag-meta").textContent = `${total} patients triaged`;
+        $("#flag-meta").textContent = `${total} patient${total === 1 ? "" : "s"} triaged ${WORD}`;
+        const share = (v) => (total ? v * 100 / total : 0);
         hbars($("#flags"), [
             { label: "Fever", value: f.fever }, { label: "High BP", value: f.high_bp },
             { label: "Low oxygen", value: f.low_spo2 }, { label: "Fast pulse", value: f.tachycardia },
             { label: "Abnormal glucose", value: f.glucose }, { label: "Obese (BMI ≥ 30)", value: f.obese },
-        ], { format: (v) => `${v} <span style="color:var(--ink-mute)">(${total ? Math.round(v * 100 / total) : 0}%)</span>`, cls: (r) => (r.value ? "" : "") });
+        ], { format: (v) => `${v} <span style="color:var(--ink-mute)">(${Math.round(share(v))}%)</span>`, cls: (r) => (share(r.value) > 25 ? "bad" : share(r.value) >= 10 ? "warn" : "good") });
+
+        // Arrivals by hour: smooth, colourful curves
+        const h = d.by_hour, hours = Array.from({ length: 17 }, (_, i) => i + 5), at = (a) => hours.map((x) => a[x] || 0);
+        const series = [];
+        if (h.checked_in) series.push({ label: "Checked in at the door", values: at(h.checked_in), colors: ["#2c6bb3", "#228883"] });
+        series.push({ label: "Registered", values: at(h.registered), colors: ["#e07a3a", "#d6558b"] });
+        series.push({ label: "Vitals taken", values: at(h.triaged), colors: ["#8a4fd0", "#2f9e5b"] });
+        Desk.smoothLine("hour-chart", hours.map((x) => `${String(x).padStart(2, "0")}:00`), series);
     }
 
     // ------------------------------------------------------------ check-in

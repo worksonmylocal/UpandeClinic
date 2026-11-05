@@ -23,9 +23,11 @@
   <div class="tabpanel on" id="tab-queue"><div class="card"><div class="card__head"><h3>Waiting to be Dispensed</h3><span class="meta" id="queue-meta"></span></div><div class="queue" id="queue"><div class="skel"></div></div></div></div>
   <div class="tabpanel" id="tab-done"><div class="card"><div class="card__head"><h3>Dispensed Today</h3></div><div id="dispensed"><div class="skel"></div></div></div></div>
   <div class="tabpanel" id="tab-insights">
+    <div class="ins-bar"><div id="period"></div><span class="meta" id="range-meta" style="font-size:12px;color:var(--ink-mute)"></span></div>
+    <div class="live-grid" id="drug-totals"></div>
     <div class="row-2-eq">
-      <div class="card"><div class="card__head"><h3>Most Dispensed — Last 30 Days</h3><span class="meta">Units</span></div><div id="top-drugs"><div class="skel"></div></div></div>
-      <div class="card chart-wrap"><div class="card__head"><h3>Prescriptions Filled — Last 14 Days</h3></div><canvas id="day-chart" height="240"></canvas></div>
+      <div class="card"><div class="card__head"><h3>Most Dispensed Drugs</h3><span class="meta" id="drug-meta">Units handed out</span></div><div id="top-drugs"><div class="skel"></div></div></div>
+      <div class="card"><div class="card__head"><h3>Share of Units Dispensed</h3></div><div class="ring" style="max-width:260px"><canvas id="drug-chart" width="260" height="260"></canvas><div class="ring__mid" id="drug-mid"></div></div></div>
     </div>
   </div>
 </div>

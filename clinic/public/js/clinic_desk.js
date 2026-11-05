@@ -695,7 +695,82 @@ window.Desk = (function () {
         return { init };
     })();
 
+    // ---------------------------------------------------------------- insights helpers
+    const PALETTE = ["#2c6bb3", "#e07a3a", "#228883", "#b9770e", "#8a4fd0", "#c4302b", "#2f9e5b", "#d6558b"];
+    const LEVEL = { good: "#1a8a3a", warn: "#e68a00", bad: "#c4302b" };
+
+    // Day / Week / Month switch: calls onChange(period) and returns { value }.
+    function periodToggle(el, onChange, initial = "day") {
+        const state = { value: initial };
+        el.innerHTML = `<div class="seg-toggle">${[["day", "Today"], ["week", "This week"], ["month", "This month"]]
+            .map(([k, l]) => `<button type="button" data-period="${k}" class="${k === initial ? "on" : ""}">${l}</button>`).join("")}</div>`;
+        $$("[data-period]", el).forEach((b) => b.addEventListener("click", () => {
+            state.value = b.dataset.period;
+            $$("[data-period]", el).forEach((x) => x.classList.toggle("on", x === b));
+            onChange(state.value);
+        }));
+        return state;
+    }
+
+    // Smooth curves whose stroke runs through the series colours left to right
+    function smoothLine(id, labels, series) {
+        const grad = (colors) => (c) => {
+            const a = c.chart.chartArea;
+            if (!a) return colors[0];
+            const g = c.chart.ctx.createLinearGradient(a.left, 0, a.right, 0);
+            colors.forEach((col, i) => g.addColorStop(colors.length === 1 ? 0 : i / (colors.length - 1), col));
+            return g;
+        };
+        const fill = (color) => (c) => {
+            const a = c.chart.chartArea;
+            if (!a) return "transparent";
+            const g = c.chart.ctx.createLinearGradient(0, a.top, 0, a.bottom);
+            g.addColorStop(0, color + "55"); g.addColorStop(1, color + "00");
+            return g;
+        };
+        chart(id, {
+            type: "line",
+            data: { labels, datasets: series.map((s) => ({
+                label: s.label, data: s.values, tension: 0.45, borderWidth: 3, pointRadius: 0, pointHoverRadius: 6, fill: true,
+                borderColor: grad(s.colors), backgroundColor: fill(s.colors[0]), pointBackgroundColor: s.colors[0],
+            })) },
+            options: { maintainAspectRatio: false, interaction: { mode: "index", intersect: false }, plugins: { legend: { display: series.length > 1, labels: { usePointStyle: true, boxWidth: 8 } } } },
+        });
+    }
+
+    function countUp(el, to, ms = 700) {
+        const target = Number(to) || 0, t0 = performance.now(), decimals = String(to).includes(".") ? 1 : 0;
+        const tick = (t) => {
+            const k = Math.min((t - t0) / ms, 1), e = 1 - Math.pow(1 - k, 3);
+            el.textContent = (target * e).toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+            if (k < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+    }
+
+    // Lively tiles: coloured accent, icon, number that counts up, soft lift on hover
+    function livelyTiles(el, items) {
+        el.innerHTML = items.map((k, i) => `<div class="live" style="--c:${k.color || PALETTE[i % PALETTE.length]};animation-delay:${i * 60}ms">
+            <div class="live__ico">${k.icon || ""}</div>
+            <div class="live__num" data-to="${esc(k.value)}">0</div>
+            <div class="live__label">${esc(k.label)}</div>
+            ${k.unit ? `<div class="live__unit">${k.unit}</div>` : ""}</div>`).join("");
+        $$(".live__num", el).forEach((n) => countUp(n, n.dataset.to));
+    }
+
+    // Ranked list with gradient bars (top diagnoses, most dispensed drugs)
+    function ranked(el, rows, { format = num } = {}) {
+        if (!rows.length) { el.innerHTML = empty("Nothing recorded in this period."); return; }
+        const max = Math.max(...rows.map((r) => Number(r.value) || 0), 1);
+        el.innerHTML = `<div class="rank">${rows.map((r, i) => `<div class="rank__row" style="--c:${PALETTE[i % PALETTE.length]}">
+            <div class="rank__n">${i + 1}</div>
+            <div><div class="rank__name"><span title="${esc(r.label)}">${esc(r.label)}</span>${r.sub ? `<span style="font-weight:400;color:var(--ink-mute)">${r.sub}</span>` : ""}</div>
+            <div class="rank__lane"><div class="rank__fill" data-w="${(Number(r.value) || 0) / max * 100}"></div></div></div>
+            <div class="rank__val">${format(r.value, r)}</div></div>`).join("")}</div>`;
+        requestAnimationFrame(() => $$(".rank__fill", el).forEach((f) => (f.style.width = f.dataset.w + "%")));
+    }
+
     return { call, esc, $, $$, num, initials, timeOf, dateOf, duration, wait, waitClass, typeTag, pill, ageSex, empty, split, money,
         toast, shell, tabs, poll, kpis, hbars, chart, stackedDatasets, stackedOptions, COLORS, modal, field, read, suggest,
-        banner, masters, facilityField, pickPatient, REFRESH_ICON, cfg, IdleLock };
+        banner, masters, facilityField, pickPatient, REFRESH_ICON, cfg, IdleLock, PALETTE, LEVEL, periodToggle, smoothLine, countUp, livelyTiles, ranked };
 })();

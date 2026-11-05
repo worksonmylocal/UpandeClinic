@@ -38,11 +38,18 @@
       <div class="card"><div class="card__head"><h3>Consultations Completed This Month</h3><span class="meta" id="month-meta"></span></div><div class="tscroll" id="seen-month"><div class="skel"></div></div></div>
     </div>
     <div class="tabpanel" id="tab-insights">
+      <div class="ins-bar"><div id="period"></div><span class="meta" id="range-meta" style="font-size:12px;color:var(--ink-mute)"></span></div>
       <div class="row-2-eq">
-        <div class="card chart-wrap"><div class="card__head"><h3>Top Diagnoses — Last 30 Days</h3></div><canvas id="dx-chart" height="240"></canvas></div>
-        <div class="card chart-wrap"><div class="card__head"><h3>Consultations — Last 14 Days</h3></div><canvas id="day-chart" height="240"></canvas></div>
+        <div class="card"><div class="card__head"><h3>Top Diagnoses</h3><span class="meta" id="dx-meta"></span></div>
+          <div class="ring" style="max-width:240px"><canvas id="dx-chart" width="240" height="240"></canvas><div class="ring__mid" id="dx-mid"></div></div>
+          <div style="margin-top:20px" id="dx-rank"><div class="skel"></div></div></div>
+        <div>
+          <div class="card"><div class="card__head"><h3>Consultation Duration</h3><span class="meta" id="dur-meta"></span></div><div class="live-grid" id="duration" style="margin-bottom:0"></div></div>
+          <div class="card"><div class="card__head"><h3>Workdays Prescribed</h3><span class="meta" id="days-meta"></span></div><div class="live-grid" id="workdays" style="margin-bottom:0"></div></div>
+        </div>
       </div>
-      <div class="card"><div class="card__head"><h3>Workload — Last 30 Days</h3></div><div class="kpi-grid" id="workload" style="margin-bottom:0"></div></div>
+      <div class="card"><div class="card__head"><h3>Workload</h3><span class="meta" id="load-meta"></span></div><div class="live-grid" id="workload" style="margin-bottom:0"></div></div>
+      <div class="card chart-wrap"><div class="card__head"><h3 id="series-title">Consultations</h3></div><div style="position:relative;height:260px"><canvas id="day-chart"></canvas></div></div>
     </div>
   </div>
   <div id="view-ws" style="display:none"></div>

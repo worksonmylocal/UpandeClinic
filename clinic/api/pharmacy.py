@@ -2,10 +2,8 @@
 
 import frappe
 from frappe import _
-from frappe.utils import add_days, nowdate
-
 from clinic import stock
-from clinic.api.common import clean, minutes_since, patient_card, require, to_number, today_start, user_name
+from clinic.api.common import clean, minutes_since, patient_card, period_range, require, to_number, today_start, user_name
 
 
 @frappe.whitelist()
@@ -79,31 +77,33 @@ def dashboard():
 
 
 @frappe.whitelist()
-def insights():
+def insights(period="month"):
+	"""Most dispensed drugs for today, this week or this month."""
 	require("pharmacy")
-	since = add_days(nowdate(), -13)
+	first, last = period_range(period)
+	p = {"a": f"{first} 00:00:00", "b": f"{last} 23:59:59"}
 	top_drugs = frappe.db.sql(
 		"""
-		SELECT IFNULL(i.drug_name, i.drug) AS label, SUM(i.dispensed_qty) AS qty, COUNT(*) AS prescriptions,
-			SUM(IF(d.patient_type = 'Employee', i.dispensed_qty, 0)) AS employees
+		SELECT IFNULL(i.drug_name, i.drug) AS label, i.drug, SUM(i.dispensed_qty) AS qty, COUNT(DISTINCT d.name) AS prescriptions,
+			COUNT(DISTINCT d.patient) AS patients, MAX(i.uom) AS uom
 		FROM `tabClinic Dispensing Item` i JOIN `tabClinic Dispensing` d ON d.name = i.parent
-		WHERE d.docstatus = 1 AND DATE(d.dispensed_on) >= %s
-		GROUP BY i.drug, i.drug_name ORDER BY qty DESC LIMIT 8
+		WHERE d.docstatus = 1 AND d.dispensed_on BETWEEN %(a)s AND %(b)s AND i.dispensed_qty > 0
+		GROUP BY i.drug, i.drug_name ORDER BY qty DESC LIMIT 10
 		""",
-		add_days(nowdate(), -29),
+		p,
 		as_dict=True,
 	)
-	by_day = frappe.db.sql(
+	totals = frappe.db.sql(
 		"""
-		SELECT DATE(dispensed_on) AS day,
-			SUM(patient_type = 'Employee') AS employees
-		FROM `tabClinic Dispensing` WHERE docstatus = 1 AND DATE(dispensed_on) >= %s
-		GROUP BY DATE(dispensed_on) ORDER BY day
+		SELECT COUNT(DISTINCT d.name) AS dispensings, IFNULL(SUM(i.dispensed_qty), 0) AS units,
+			COUNT(DISTINCT i.drug) AS drugs
+		FROM `tabClinic Dispensing Item` i JOIN `tabClinic Dispensing` d ON d.name = i.parent
+		WHERE d.docstatus = 1 AND d.dispensed_on BETWEEN %(a)s AND %(b)s AND i.dispensed_qty > 0
 		""",
-		since,
+		p,
 		as_dict=True,
-	)
-	return {"top_drugs": top_drugs, "by_day": [{**row, "day": str(row.day)} for row in by_day]}
+	)[0]
+	return {"period": period, "range": {"from": str(first), "to": str(last)}, "top_drugs": top_drugs, "totals": totals}
 
 
 @frappe.whitelist()
