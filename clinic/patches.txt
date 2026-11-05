@@ -8,3 +8,4 @@ clinic.patches.seed_pharmacy_warehouse
 clinic.patches.seed_notifiable_diseases
 clinic.patches.seed_first_aid
 clinic.patches.use_main_store_for_drugs
+clinic.patches.set_up_clinic_biometric

@@ -513,3 +513,14 @@ body.il-open{overflow:hidden}
   .pagehead{grid-template-columns:1fr;gap:14px}
   .pagehead__title{font-size:30px}
 }
+
+/* Attendance page */
+.att-filters{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap}
+.att-filters .field{margin:0}
+.att-q{flex:1 1 220px}
+.att-quick{display:flex;gap:8px;flex-wrap:wrap}
+.emp{display:flex;align-items:center;gap:12px}
+.emp__av{width:38px;height:38px;border-radius:50%;background:var(--grad-ink);color:#fafaf6;display:grid;place-items:center;font-weight:600;font-size:12px;flex:none;object-fit:cover}
+.emp b{color:var(--ink);display:block;line-height:1.25}
+.emp small{color:var(--ink-mute);font-size:12px}
+@media (max-width:700px){.att-filters .field{flex:1 1 140px}}

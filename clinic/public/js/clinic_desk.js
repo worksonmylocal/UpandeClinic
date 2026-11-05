@@ -5,6 +5,7 @@ window.Desk = (function () {
         { key: "triage", label: "Triage", href: "/clinic/triage" },
         { key: "consultation", label: "Consultation", href: "/clinic/consultation" },
         { key: "pharmacy", label: "Pharmacy", href: "/clinic/pharmacy" },
+        { key: "attendance", label: "Attendance", href: "/clinic/attendance" },
         { key: "firstaid", label: "First Aid", href: "/clinic/firstaid" },
     ];
     const COLORS = { emp: "#2c6bb3", com: "#228883", ink: "#0a0a0a", warn: "#b9770e", bad: "#c4302b", good: "#1a8a3a" };

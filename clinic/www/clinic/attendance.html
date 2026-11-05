@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attendance · Mutara Clinic</title>
+<link rel="icon" type="image/jpeg" href="/assets/clinic/images/mutara-logo.jpeg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Poppins:wght@400;500;600;700&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/clinic/css/clinic_desk.css?v={{ asset_version }}">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div id="topbar"></div>
+<div class="page">
+  <div class="pagehead" id="pagehead"></div>
+  <div class="kpi-grid" id="kpis"><div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
+  <div class="card" style="padding:18px 22px;margin-bottom:18px">
+    <div class="att-filters">
+      <div class="field"><label>From</label><input type="date" id="f-from"></div>
+      <div class="field"><label>To</label><input type="date" id="f-to"></div>
+      <div class="field att-q"><label>Employee</label><input type="text" id="f-q" placeholder="Name or employee number"></div>
+      <div class="att-quick"><button class="btn btn--sm" data-q="today">Today</button><button class="btn btn--sm" data-q="yesterday">Yesterday</button><button class="btn btn--sm" data-q="week">This week</button><button class="btn btn--sm" data-q="month">This month</button></div>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab on" data-tab="visits">Attendance</button>
+    <button class="tab" data-tab="punches">Punch Log</button>
+  </div>
+  <div class="tabpanel on" id="tab-visits"><div class="card"><div class="card__head"><h3>Clinic Attendance</h3><span class="meta" id="visits-meta"></span></div><div class="tscroll" id="visits"><div class="skel"></div></div></div></div>
+  <div class="tabpanel" id="tab-punches"><div class="card"><div class="card__head"><h3>Clinic Check-ins and Check-outs</h3><span class="meta" id="punches-meta"></span></div><div class="tscroll" id="punches"><div class="skel"></div></div></div></div>
+</div>
+<script>window.CLINIC = { csrf: {{ csrf_token | tojson }}, user: {{ frappe.session.user | tojson }} };</script>
+<script src="/assets/clinic/js/clinic_desk.js?v={{ asset_version }}"></script>
+<script src="/assets/clinic/js/attendance.js?v={{ asset_version }}"></script>
+</body>
+</html>

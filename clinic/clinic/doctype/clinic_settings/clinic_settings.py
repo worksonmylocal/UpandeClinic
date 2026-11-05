@@ -33,3 +33,10 @@ class ClinicSettings(Document):
 		frappe.throw(
 			_("Only the current clinic access administrator ({0}) can change this.").format(old), frappe.PermissionError
 		)
+
+	def on_update(self):
+		before = self.get_doc_before_save()
+		if (before.get("biometric_device_id") if before else None) != self.get("biometric_device_id"):
+			from clinic import attendance
+
+			attendance.relabel()

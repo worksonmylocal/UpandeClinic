@@ -284,6 +284,7 @@ scheduler_events = {
 # Only the clinic access administrator (clinic_access_admin in site_config.json) can hand out clinic roles.
 
 doc_events = {
+	"Employee Checkin": {"validate": "clinic.attendance.label_checkin"},
 	"User": {"validate": "clinic.access.guard_user_roles"},
 	"Role Profile": {"validate": "clinic.access.guard_role_profile"},
 	"Custom DocPerm": {"validate": "clinic.access.guard_permissions"},
@@ -291,3 +292,6 @@ doc_events = {
 
 # Idle screen lock: signing in again clears a lock left behind
 on_login = ["clinic.api.lock.clear_on_login"]
+
+# Adds the Clinic Log field to Employee Checkin once HRMS is on the site
+after_migrate = ["clinic.attendance.ensure_custom_field"]

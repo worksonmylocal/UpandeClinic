@@ -11,6 +11,7 @@ PAGE_ROLES = {
 	"triage": ["Clinic Receptionist", "Clinic Nurse"],
 	"consultation": ["Clinic Doctor"],
 	"pharmacy": ["Clinic Pharmacist"],
+	"attendance": ["Clinic Receptionist", "Clinic Nurse", "Clinic Doctor"],
 	"firstaid": ["Clinic First Aider"],
 }
 

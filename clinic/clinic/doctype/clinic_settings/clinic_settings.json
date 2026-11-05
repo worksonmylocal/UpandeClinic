@@ -16,6 +16,8 @@
 		"idle_lock_minutes",
 		"access_section",
 		"access_administrator",
+		"biometric_section",
+		"biometric_device_id",
 		"section_2",
 		"po_box",
 		"head_office",
@@ -154,6 +156,17 @@
 			"label": "Clinic Access Administrator",
 			"options": "User",
 			"description": "The only person who can give or take away clinic roles. While this is empty, a Clinic Manager can claim it for themselves; after that only this person can change it. A clinic_access_admin entry in the site config, if there is one, always takes priority."
+		},
+		{
+			"fieldname": "biometric_section",
+			"fieldtype": "Section Break",
+			"label": "Clinic Biometric Device"
+		},
+		{
+			"fieldname": "biometric_device_id",
+			"fieldtype": "Small Text",
+			"label": "Clinic Biometric Device ID",
+			"description": "The device ID exactly as it appears on Employee Checkin (one per line). Punches from this device are labelled Clinic Check-in / Clinic Check-out and listed on the clinic Attendance tab."
 		}
 	],
 	"links": [],
