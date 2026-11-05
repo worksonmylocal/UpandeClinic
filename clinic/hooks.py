@@ -284,7 +284,11 @@ scheduler_events = {
 # Only the clinic access administrator (clinic_access_admin in site_config.json) can hand out clinic roles.
 
 doc_events = {
-	"Employee Checkin": {"validate": "clinic.attendance.label_checkin"},
+	"Employee Checkin": {
+		"validate": "clinic.attendance.label_checkin",
+		"after_insert": "clinic.attendance.renumber_after_save",
+		"on_trash": "clinic.attendance.renumber_after_save",
+	},
 	"User": {"validate": "clinic.access.guard_user_roles"},
 	"Role Profile": {"validate": "clinic.access.guard_role_profile"},
 	"Custom DocPerm": {"validate": "clinic.access.guard_permissions"},

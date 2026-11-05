@@ -4,66 +4,54 @@ import frappe
 from frappe.utils import add_days, get_datetime, getdate, nowdate
 
 from clinic.api.common import minutes_since, require
-from clinic.attendance import device_ids, has_checkin, label_for
+from clinic.attendance import IN_LABEL, device_ids, has_checkin, sequence
 
 MAX_DAYS = 62
-DUPLICATE_SECONDS = 120  # a device that re-sends a punch must not count twice
 
 
 def _punches(devices, start, end, q=None):
 	rows = frappe.get_all(  # reads regardless of HR permissions: only these few fields leave the server
 		"Employee Checkin",
 		filters={"device_id": ["in", devices], "time": ["between", [f"{start} 00:00:00", f"{end} 23:59:59"]]},
-		fields=["name", "employee", "employee_name", "log_type", "time", "device_id"],
-		order_by="employee asc, time asc",
+		fields=["name", "employee", "employee_name", "time", "device_id"],
+		order_by="employee asc, time asc, creation asc",
 		limit_page_length=0,
 	)
 	if q:
 		q = q.lower()
 		rows = [r for r in rows if q in (r.employee_name or "").lower() or q in (r.employee or "").lower()]
-	clean, last = [], {}
+	days = {}
 	for r in rows:
-		key = (r.employee, r.log_type)
-		prev = last.get(key)
-		if prev and (get_datetime(r.time) - get_datetime(prev)).total_seconds() < DUPLICATE_SECONDS:
-			continue
-		last[key] = r.time
-		r["label"] = label_for(r.log_type)
-		clean.append(r)
+		days.setdefault((r.employee, str(r.time)[:10]), []).append(r)
+	clean = []
+	for group in days.values():
+		for r, (label, dup) in zip(group, sequence([g.time for g in group])):
+			if not dup:  # a re-sent touch is not a second touch
+				r["label"] = label
+				r["log_type"] = "IN" if label == IN_LABEL else "OUT"
+				clean.append(r)
 	return clean
 
 
 def _sessions(punches):
-	"""Pair each check-in with the next check-out of the same employee."""
-	out, open_ = [], {}
+	"""One line per visit: touch 1 is time in, touch 2 is time out, touch 3 starts a fresh visit, and so on."""
+	by_day = {}
 	for p in punches:  # ordered by employee, then time
-		cur = open_.get(p.employee)
-		if p.log_type == "IN":
-			if cur:  # a second check-in without a check-out in between
-				out.append(cur)
-			open_[p.employee] = {"employee": p.employee, "employee_name": p.employee_name, "time_in": p.time, "time_out": None}
-		else:
-			if cur:
-				cur["time_out"] = p.time
-				out.append(cur)
-				open_.pop(p.employee)
+		by_day.setdefault((p.employee, str(p.time)[:10]), []).append(p)
+	out, today = [], nowdate()
+	for (employee, day), touches in by_day.items():
+		for i in range(0, len(touches), 2):
+			start = touches[i].time
+			end = touches[i + 1].time if i + 1 < len(touches) else None
+			s = {"employee": employee, "employee_name": touches[i].employee_name, "time_in": start, "time_out": end, "date": day}
+			if end:
+				s["minutes"] = max(int((get_datetime(end) - get_datetime(start)).total_seconds() // 60), 0)
+				s["status"] = "Completed"
 			else:
-				out.append({"employee": p.employee, "employee_name": p.employee_name, "time_in": None, "time_out": p.time})
-	out.extend(open_.values())
-	today = nowdate()
-	for s in out:
-		start, end = s["time_in"], s["time_out"]
-		s["date"] = str((start or end))[:10]
-		if start and end:
-			s["minutes"] = max(int((get_datetime(end) - get_datetime(start)).total_seconds() // 60), 0)
-			s["status"] = "Completed"
-		elif start:
-			s["minutes"] = minutes_since(start) if s["date"] == today else None
-			s["status"] = "In clinic" if s["date"] == today else "No check-out"
-		else:
-			s["minutes"] = None
-			s["status"] = "No check-in"
-	out.sort(key=lambda s: str(s["time_in"] or s["time_out"]), reverse=True)
+				s["minutes"] = minutes_since(start) if day == today else None
+				s["status"] = "In clinic" if day == today else "No check-out"
+			out.append(s)
+	out.sort(key=lambda s: str(s["time_in"]), reverse=True)
 	return out
 
 
