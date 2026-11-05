@@ -93,11 +93,30 @@
         ? pill(`${r.consultation_type.split("-")[0]}: ${r.fitness_status || "—"}`, FIT_CLS[r.fitness_status] || "mute")
         : r.refer_out ? pill("Referred out", "warn") : pill("Treated", "good"));
 
+    // "Download file": the doctor chooses between this encounter and the patient's entire file
+    const fileCell = (r) => `<td class="num"><button class="btn btn--sm" data-file="${esc(r.consultation)}" data-patient="${esc(r.patient_name)}" data-when="${esc(dateOf(r.consultation_date))}">Download file</button></td>`;
+    function bindFiles(root) {
+        $$("[data-file]", root).forEach((b) => b.addEventListener("click", () => chooseFile(b.dataset.file, b.dataset.patient, b.dataset.when)));
+    }
+    function chooseFile(consultation, patient, when) {
+        const open = (scope) => window.open(`/clinic/patientfile?consultation=${encodeURIComponent(consultation)}&scope=${scope}`, "_blank");
+        const choice = (scope, title, note) => `<button type="button" class="btn" data-scope="${scope}" style="display:block;width:100%;text-align:left;white-space:normal;line-height:1.45;padding:16px 18px;margin-bottom:12px;border-radius:16px"><b style="font-size:15px;color:var(--ink)">${title}</b><br><span class="printnote" style="font-weight:400">${note}</span></button>`;
+        const m = modal({
+            title: "Download file", sub: esc(patient),
+            body: `${choice("encounter", "Latest encounter", `Only the encounter of ${esc(when)}: vitals, history, examination, diagnosis, results and treatment.`)}
+                ${choice("full", "Entire file", "Every completed visit on record for this patient, newest first, with a summary of the visits at the front.")}
+                <div class="printnote">The file opens in a new tab. Choose <b>Save as PDF</b> to download it. Each download is logged on the consultation.</div>`,
+            foot: [{ label: "Cancel" }],
+        });
+        $$("[data-scope]", m.body).forEach((b) => b.addEventListener("click", () => { open(b.dataset.scope); m.close(); }));
+    }
+
     function renderCompleted(rows) {
-        $("#completed").innerHTML = rows.length ? `<table class="dtable"><tr><th>Time</th><th>Patient</th><th>Type</th><th>Diagnosis</th><th class="num">Sick-off</th><th>Outcome</th></tr>
+        $("#completed").innerHTML = rows.length ? `<table class="dtable"><tr><th>Time</th><th>Patient</th><th>Type</th><th>Diagnosis</th><th class="num">Sick-off</th><th>Outcome</th><th></th></tr>
             ${rows.map((r) => `<tr><td>${timeOf(r.consultation_date)}</td><td><b style="color:var(--ink)">${esc(r.patient_name)}</b><br><span class="printnote">${esc(ageSex(r))}</span></td>
             <td>${typeTag(r.patient_type)}</td><td>${esc(r.diagnoses || (r.consultation_type !== "Consultation" ? r.consultation_type : "—"))}</td><td class="num">${r.sick_leave_days || "—"}</td>
-            <td>${outcome(r)}</td></tr>`).join("")}</table>` : empty("No completed consultations yet today.");
+            <td>${outcome(r)}</td>${fileCell(r)}</tr>`).join("")}</table>` : empty("No completed consultations yet today.");
+        bindFiles($("#completed"));
     }
 
     async function loadMonth() {
@@ -110,10 +129,11 @@
             { label: "Referred Out", value: s.referred, cls: s.referred ? "warn" : "", unit: "To other facilities" },
             { label: "Sick-off Days", value: s.sick_days, unit: `${s.work_related} work-related cases` },
         ]);
-        $("#seen-month").innerHTML = d.rows.length ? `<table class="dtable"><tr><th>Date</th><th>Patient</th><th>Type</th><th>Diagnosis</th><th class="num">Sick-off</th><th>Outcome</th></tr>
+        $("#seen-month").innerHTML = d.rows.length ? `<table class="dtable"><tr><th>Date</th><th>Patient</th><th>Type</th><th>Diagnosis</th><th class="num">Sick-off</th><th>Outcome</th><th></th></tr>
             ${d.rows.map((r) => `<tr><td>${esc(dateOf(r.consultation_date).slice(5))} ${timeOf(r.consultation_date)}</td><td><b style="color:var(--ink)">${esc(r.patient_name)}</b><br><span class="printnote">${esc(ageSex(r))}</span></td>
             <td>${typeTag(r.patient_type)}</td><td>${esc(r.diagnoses || (r.consultation_type !== "Consultation" ? r.consultation_type : "—"))}</td><td class="num">${r.sick_leave_days || "—"}</td>
-            <td>${outcome(r)}</td></tr>`).join("")}</table>` : empty("No completed consultations yet this month.");
+            <td>${outcome(r)}</td>${fileCell(r)}</tr>`).join("")}</table>` : empty("No completed consultations yet this month.");
+        bindFiles($("#seen-month"));
     }
 
     async function loadInsights() {

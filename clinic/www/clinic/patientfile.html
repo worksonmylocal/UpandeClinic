@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Patient File</title>
+<link rel="icon" type="image/jpeg" href="/assets/clinic/images/mutara-logo.jpeg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/clinic/css/clinic_report.css?v={{ asset_version }}">
+</head>
+<body>
+<div class="toolbar no-print">
+  <a class="tb-back" href="javascript:window.close()">&larr; Close</a>
+  <span class="tb-note">Choose <b>Save as PDF</b> as the destination to download the file.</span>
+  <button class="tb-print" id="print" disabled>Download / Print</button>
+</div>
+<div id="msg" class="msg no-print">Loading&hellip;</div>
+<div id="sheet-wrap"></div>
+<script>window.CLINIC = { csrf: {{ csrf_token | tojson }}, user: {{ frappe.session.user | tojson }} };</script>
+<script src="/assets/clinic/js/clinic_desk.js?v={{ asset_version }}"></script>
+<script src="/assets/clinic/js/print_common.js?v={{ asset_version }}"></script>
+<script src="/assets/clinic/js/patientfile.js?v={{ asset_version }}"></script>
+</body>
+</html>
