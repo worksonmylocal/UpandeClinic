@@ -12,6 +12,7 @@ PAGE_ROLES = {
 	"consultation": ["Clinic Doctor"],
 	"pharmacy": ["Clinic Pharmacist"],
 	"attendance": ["Clinic Receptionist", "Clinic Nurse", "Clinic Doctor"],
+	"insights": ["Clinic Doctor"],
 	"firstaid": ["Clinic First Aider"],
 }
 

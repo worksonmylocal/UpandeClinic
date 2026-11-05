@@ -524,3 +524,10 @@ body.il-open{overflow:hidden}
 .emp b{color:var(--ink);display:block;line-height:1.25}
 .emp small{color:var(--ink-mute);font-size:12px}
 @media (max-width:700px){.att-filters .field{flex:1 1 140px}}
+
+/* Clinic Insights */
+.dtable tr.drill{cursor:pointer}
+.dtable tr.drill:hover td,.dtable tr.drill:focus td{background:rgba(44,107,179,0.05);outline:0}
+.dtable tr.total-row td{border-top:2px solid var(--hairline);background:rgba(10,10,10,0.03)}
+.card__head .meta{font-size:12px;color:var(--ink-mute)}
+.chart-wrap canvas{width:100%}

@@ -23,7 +23,7 @@ Prescriptions.
 There is no laboratory or imaging on site. Requested investigations are printed as a **referral form** (Lab or Imaging)
 for the patient to take to an external facility. Employment medicals print a **medical report** with the fitness outcome.
 
-Web pages (login and role required): `/clinic/triage`, `/clinic/consultation`, `/clinic/pharmacy`.
+Web pages (login and role required): `/clinic/triage`, `/clinic/consultation`, `/clinic/pharmacy`, `/clinic/attendance`, `/clinic/firstaid`, `/clinic/insights` (Clinic Insights: Doctor and Clinic Manager).
 Printouts: `/clinic/referral?consultation=…&type=Laboratory|Imaging`, `/clinic/certificate?consultation=…`.
 
 Roles: Clinic Receptionist, Clinic Nurse, Clinic Doctor, Clinic Pharmacist, Clinic Manager.
