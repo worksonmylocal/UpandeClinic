@@ -750,12 +750,18 @@ window.Desk = (function () {
 
     // Lively tiles: coloured accent, icon, number that counts up, soft lift on hover
     function livelyTiles(el, items) {
-        el.innerHTML = items.map((k, i) => `<div class="live" style="--c:${k.color || PALETTE[i % PALETTE.length]};animation-delay:${i * 60}ms">
+        el.innerHTML = items.map((k, i) => `<div class="live" ${k.onClick ? 'role="button" tabindex="0"' : ""} data-i="${i}" style="--c:${k.color || PALETTE[i % PALETTE.length]};animation-delay:${i * 60}ms">
             <div class="live__ico">${k.icon || ""}</div>
-            <div class="live__num" data-to="${esc(k.value)}">0</div>
+            <div class="live__num" ${typeof k.value === "number" || /^\d+(\.\d+)?$/.test(String(k.value)) ? `data-to="${esc(k.value)}"` : ""}>${typeof k.value === "number" || /^\d+(\.\d+)?$/.test(String(k.value)) ? "0" : k.value}</div>
             <div class="live__label">${esc(k.label)}</div>
-            ${k.unit ? `<div class="live__unit">${k.unit}</div>` : ""}</div>`).join("");
-        $$(".live__num", el).forEach((n) => countUp(n, n.dataset.to));
+            ${k.unit ? `<div class="live__unit">${k.unit}</div>` : ""}${k.onClick ? `<span class="live__hint">${esc(k.hint || "Open")} →</span>` : ""}</div>`).join("");
+        $$(".live__num[data-to]", el).forEach((n) => countUp(n, n.dataset.to));
+        $$(".live[data-i]", el).forEach((t) => {
+            const k = items[Number(t.dataset.i)];
+            if (!k.onClick) return;
+            t.addEventListener("click", k.onClick);
+            t.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); k.onClick(); } });
+        });
     }
 
     // Ranked list with gradient bars (top diagnoses, most dispensed drugs)

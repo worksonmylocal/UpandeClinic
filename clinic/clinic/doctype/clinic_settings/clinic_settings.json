@@ -18,6 +18,7 @@
 		"access_administrator",
 		"biometric_section",
 		"biometric_device_id",
+		"biometric_staff",
 		"section_2",
 		"po_box",
 		"head_office",
@@ -167,6 +168,13 @@
 			"fieldtype": "Small Text",
 			"label": "Clinic Biometric Device ID",
 			"description": "The device ID exactly as it appears on Employee Checkin (one per line). Punches from this device are labelled Clinic Check-in / Clinic Check-out and listed on the clinic Attendance tab."
+		},
+		{
+			"fieldname": "biometric_staff",
+			"fieldtype": "Table",
+			"label": "Clinic Staff Using This Device",
+			"options": "Clinic Biometric Staff",
+			"description": "Staff who work at the clinic and are never patients (for example the doctor). Their punches on this device are not clinic visits: they stay out of the clinic Attendance tab and go to HR attendance as usual."
 		}
 	],
 	"links": [],

@@ -4,7 +4,7 @@ import frappe
 from frappe.utils import add_days, get_datetime, getdate, nowdate
 
 from clinic.api.common import minutes_since, require
-from clinic.attendance import IN_LABEL, device_ids, has_checkin, sequence
+from clinic.attendance import IN_LABEL, device_ids, has_checkin, sequence, staff_ids
 
 MAX_DAYS = 62
 
@@ -17,6 +17,9 @@ def _punches(devices, start, end, q=None):
 		order_by="employee asc, time asc, creation asc",
 		limit_page_length=0,
 	)
+	staff = staff_ids()  # clinic staff are not patients: their touches belong to HR attendance
+	if staff:
+		rows = [r for r in rows if r.employee not in staff]
 	if q:
 		q = q.lower()
 		rows = [r for r in rows if q in (r.employee_name or "").lower() or q in (r.employee or "").lower()]

@@ -18,6 +18,13 @@ def device_ids():
 	return [d.strip() for d in raw.replace(",", "\n").splitlines() if d.strip()]
 
 
+def staff_ids():
+	"""Employees who work at the clinic and never come as patients: their touches on the clinic device are HR's."""
+	if not frappe.db.table_exists("Clinic Biometric Staff"):
+		return set()
+	return set(frappe.get_all("Clinic Biometric Staff", filters={"parenttype": "Clinic Settings"}, pluck="employee"))
+
+
 def has_checkin():
 	return frappe.db.table_exists("Employee Checkin")
 
@@ -65,6 +72,11 @@ def relabel_day(employee, day):
 def label_checkin(doc, method=None):
 	"""doc_events hook (validate): label a punch from the clinic device, and keep it out of HR's automatic attendance
 	(the device is for the clinic alone)."""
+	if doc.get("employee") in staff_ids():
+		# clinic staff are not patients: nothing clinic-specific about their touches, and HR attendance handles them
+		if doc.get(FIELD):
+			doc.set(FIELD, None)
+		return
 	if doc.get("device_id") and doc.device_id in device_ids():
 		if doc.get("employee") and doc.get("time"):
 			day = get_datetime(doc.time).date()
@@ -82,7 +94,7 @@ def label_checkin(doc, method=None):
 
 def renumber_after_save(doc, method=None):
 	"""doc_events hook (after_insert / on_trash): a late or removed punch shifts the ones after it."""
-	if doc.get("device_id") and doc.device_id in device_ids() and doc.get("time"):
+	if doc.get("device_id") and doc.device_id in device_ids() and doc.get("time") and doc.get("employee") not in staff_ids():
 		relabel_day(doc.employee, get_datetime(doc.time).date())
 
 
@@ -112,19 +124,21 @@ def ensure_custom_field():
 
 
 def relabel():
-	"""Label every punch from the clinic device by position in the person's day, and clear the label from any other
-	device's punches."""
+	"""Label every clinic punch by position in the person's day. Punches from other devices, and every punch by clinic
+	staff (who are never patients), carry no clinic label and are left to HR's automatic attendance."""
 	if not has_checkin() or not frappe.db.has_column("Employee Checkin", FIELD):
 		return 0
-	devices = device_ids()
-	frappe.db.sql(f"UPDATE `tabEmployee Checkin` SET `{FIELD}` = NULL WHERE `{FIELD}` IS NOT NULL AND `{FIELD}` != ''" + (
-		" AND device_id NOT IN %(d)s" if devices else ""), {"d": tuple(devices)})
+	devices, staff = device_ids(), tuple(staff_ids())
+	clear = f"UPDATE `tabEmployee Checkin` SET `{FIELD}` = NULL WHERE IFNULL(`{FIELD}`, '') != ''"
+	if devices:
+		clear += " AND (device_id NOT IN %(d)s" + (" OR employee IN %(s)s" if staff else "") + ")"
+	frappe.db.sql(clear, {"d": tuple(devices), "s": staff})
 	if not devices:
 		return 0
 	rows = frappe.db.sql(
 		f"""SELECT name, employee, time, `{FIELD}` AS label FROM `tabEmployee Checkin`
-		WHERE device_id IN %(d)s ORDER BY employee, time, creation""",
-		{"d": tuple(devices)},
+		WHERE device_id IN %(d)s{" AND employee NOT IN %(s)s" if staff else ""} ORDER BY employee, time, creation""",
+		{"d": tuple(devices), "s": staff},
 		as_dict=True,
 	)
 	groups = {}
@@ -134,14 +148,22 @@ def relabel():
 		for r, (label, _) in zip(group, sequence([g.time for g in group])):
 			if r.label != label:
 				frappe.db.set_value("Employee Checkin", r.name, FIELD, label, update_modified=False)
-	# Keep these punches out of HR's automatic attendance. Punches already turned into an Attendance record are left
-	# alone: those records belong to HR.
+	# Clinic punches stay out of HR's automatic attendance; clinic staff's go back to it. Punches already turned into an
+	# Attendance record are left alone: those records belong to HR.
 	if frappe.db.has_column("Employee Checkin", "skip_auto_attendance"):
 		frappe.db.sql(
-			"""UPDATE `tabEmployee Checkin` SET skip_auto_attendance = 1
-			WHERE device_id IN %(d)s AND IFNULL(attendance, '') = '' AND IFNULL(skip_auto_attendance, 0) = 0""",
-			{"d": tuple(devices)},
+			f"""UPDATE `tabEmployee Checkin` SET skip_auto_attendance = 1
+			WHERE device_id IN %(d)s{" AND employee NOT IN %(s)s" if staff else ""}
+			AND IFNULL(attendance, '') = '' AND IFNULL(skip_auto_attendance, 0) = 0""",
+			{"d": tuple(devices), "s": staff},
 		)
+		if staff:
+			frappe.db.sql(
+				"""UPDATE `tabEmployee Checkin` SET skip_auto_attendance = 0
+				WHERE device_id IN %(d)s AND employee IN %(s)s
+				AND IFNULL(attendance, '') = '' AND IFNULL(skip_auto_attendance, 0) = 1""",
+				{"d": tuple(devices), "s": staff},
+			)
 	return len(devices)
 
 

@@ -36,7 +36,8 @@ class ClinicSettings(Document):
 
 	def on_update(self):
 		before = self.get_doc_before_save()
-		if (before.get("biometric_device_id") if before else None) != self.get("biometric_device_id"):
+		staff = lambda doc: sorted(r.employee for r in (doc.get("biometric_staff") or [])) if doc else []  # noqa: E731
+		if (before.get("biometric_device_id") if before else None) != self.get("biometric_device_id") or staff(before) != staff(self):
 			from clinic import attendance
 
 			attendance.relabel()

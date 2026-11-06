@@ -1,0 +1,37 @@
+{
+	"actions": [],
+	"creation": "2026-11-06 09:00:00.000000",
+	"doctype": "DocType",
+	"engine": "InnoDB",
+	"istable": 1,
+	"editable_grid": 1,
+	"field_order": ["employee", "employee_name"],
+	"fields": [
+		{
+			"fieldname": "employee",
+			"fieldtype": "Link",
+			"label": "Employee",
+			"options": "Employee",
+			"reqd": 1,
+			"in_list_view": 1
+		},
+		{
+			"fieldname": "employee_name",
+			"fieldtype": "Data",
+			"label": "Name",
+			"fetch_from": "employee.employee_name",
+			"read_only": 1,
+			"in_list_view": 1
+		}
+	],
+	"links": [],
+	"modified": "2026-11-06 09:00:00.000000",
+	"modified_by": "Administrator",
+	"module": "Clinic",
+	"name": "Clinic Biometric Staff",
+	"owner": "Administrator",
+	"permissions": [],
+	"sort_field": "creation",
+	"sort_order": "DESC",
+	"states": []
+}

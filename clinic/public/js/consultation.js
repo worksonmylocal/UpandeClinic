@@ -9,7 +9,7 @@
         sub: "Patients sent from triage, and everything you need to see, treat and refer them",
         tools: `<button class="iconbtn" id="refresh" title="Refresh">${Desk.REFRESH_ICON}</button>`,
     });
-    Desk.tabs((tab) => { if (tab === "insights") loadInsights(); else if (tab === "month") loadMonth(); });
+    Desk.tabs((tab) => { if (tab === "insights") loadInsights(); else if (tab === "seen") loadSeen(); });
     $("#refresh").addEventListener("click", () => { loadAll(); toast("Refreshed"); });
 
     const M = await masters();
@@ -22,19 +22,33 @@
         dash = await call("consultation.dashboard");
         renderKpis(dash.kpis);
         renderQueues(dash);
-        renderCompleted(dash.completed);
         if ($("#tab-insights").classList.contains("on")) loadInsights();
-        if ($("#tab-month").classList.contains("on")) loadMonth();
+        if ($("#tab-seen").classList.contains("on")) loadSeen();
     }
 
+    // Top tiles: lively, and each one takes you to what it counts
+    const ICON = (path) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
+    const GO = (id) => () => {
+        const tab = $('.tab[data-tab="queue"]'); if (tab && !tab.classList.contains("on")) tab.click();
+        const t = $(id); if (!t) return;
+        t.scrollIntoView({ behavior: "smooth", block: "center" });
+        t.classList.remove("flash"); void t.offsetWidth; t.classList.add("flash");
+    };
     function renderKpis(k) {
-        kpis($("#kpis"), [
-            { label: "Waiting for Doctor", value: k.waiting, cls: k.waiting ? "warn" : "", unit: k.emergency ? `${k.emergency} urgent / emergency` : k.waiting ? `Longest wait ${Desk.duration(k.longest_wait)}` : "Queue is clear" },
-            { label: "Results to Review", value: k.results_pending, cls: k.results_received ? "info" : "", unit: k.results_pending ? `${k.results_received} result${k.results_received === 1 ? "" : "s"} received` : "No investigations out" },
-            { label: "Open Consultations", value: k.in_progress, unit: "In progress now" },
-            { label: "Seen Today", value: k.seen_today, cls: "good", unit: `${Desk.split(k.employees_today)}` },
-            { label: "Avg Wait for Doctor", value: `${k.avg_wait}<span style="font-size:14px;font-weight:500"> min</span>`, unit: "Triage → consultation, today" },
-            { label: "Referred Out / Sick-off", value: `${k.referrals_out} <span style="font-size:14px;color:var(--ink-mute)">/ ${k.sick_days}d</span>`, unit: `${k.work_related} work-related · ${k.follow_ups_week} follow-ups this week` },
+        const P = Desk.PALETTE;
+        Desk.livelyTiles($("#kpis"), [
+            { label: "Awaiting Consultation", value: k.waiting, color: P[1], hint: "See the queue", onClick: GO("#tile-waiting"),
+              icon: ICON('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'), unit: k.emergency ? `${k.emergency} urgent / emergency` : k.waiting ? `Longest wait ${Desk.duration(k.longest_wait)}` : "Queue is clear" },
+            { label: "Awaiting Results", value: k.results_pending, color: P[4], hint: "See the list", onClick: GO("#tile-results"),
+              icon: ICON('<path d="M9 3h6v4l4 11a2 2 0 0 1-2 3H7a2 2 0 0 1-2-3l4-11z"/>'), unit: k.results_pending ? `${k.results_received} result${k.results_received === 1 ? "" : "s"} received` : "No investigations out" },
+            { label: "Open Consultations", value: k.in_progress, color: P[0], hint: "See the list", onClick: GO("#tile-open"),
+              icon: ICON('<path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/>'), unit: "In progress now" },
+            { label: "Seen Today", value: k.seen_today, color: P[6], hint: "Patients seen", onClick: () => $('.tab[data-tab="seen"]').click(),
+              icon: ICON('<path d="M20 6 9 17l-5-5"/>'), unit: `${Desk.split(k.employees_today)}` },
+            { label: "Avg Wait for Doctor", value: `${k.avg_wait}<span style="font-size:15px;font-weight:600"> min</span>`, color: P[3],
+              icon: ICON('<path d="M5 3h14M5 21h14M7 3v4a5 5 0 0 0 10 0V3M7 21v-4a5 5 0 0 1 10 0v4"/>'), unit: "Triage → consultation, today" },
+            { label: "Referred Out / Sick-off", value: `${k.referrals_out} <span style="font-size:15px;font-weight:600;color:var(--ink-mute)">/ ${k.sick_days}d</span>`, color: P[5],
+              icon: ICON('<path d="M5 12h14M13 6l6 6-6 6"/>'), unit: `${k.work_related} work-related · ${k.follow_ups_week} follow-ups this week` },
         ]);
     }
 
@@ -49,13 +63,19 @@
             <div class="qcard__side">${r.wait_minutes != null ? wait(r.wait_minutes, 20, 45) : ""}${button}</div></div>`;
     }
 
+    const emptyTile = (path, text) => `<div class="empty"><span class="empty__ico">${ICON(path)}</span>${esc(text)}</div>`;
+    function setCount(id, n) {
+        const el = $(id);
+        if (el.textContent !== String(n)) { el.textContent = n; el.classList.remove("pop"); void el.offsetWidth; el.classList.add("pop"); }
+    }
+
     function renderQueues(d) {
-        $("#waiting-meta").textContent = d.waiting.length ? `${d.waiting.length} waiting` : "";
+        setCount("#waiting-meta", d.waiting.length);
         $("#waiting").innerHTML = d.waiting.length
             ? d.waiting.map((r) => queueCard(r, `<button class="btn btn--primary btn--sm" data-open="${esc(r.visit)}">Start consultation</button>`)).join("")
-            : empty("No patients waiting.");
+            : emptyTile('<path d="M20 6 9 17l-5-5"/>', "No patients waiting. You're all caught up.");
 
-        $("#results-meta").textContent = d.results.length ? `${d.results.length} patient${d.results.length === 1 ? "" : "s"}` : "";
+        setCount("#results-meta", d.results.length);
         $("#results").innerHTML = d.results.length
             ? d.results.map((r) => `<div class="qcard qcard--link" data-review="${esc(r.visit)}" data-received="${r.received ? 1 : 0}" tabindex="0" role="button" title="Open this patient's consultation"><div class="qcard__stripe ${r.abnormal ? "Emergency" : r.received ? "Urgent" : ""}"></div>
                 <div><div class="qcard__name">${esc(r.patient_name)} ${typeTag(r.patient_type)}
@@ -65,7 +85,7 @@
                 <div class="qcard__note">${r.tests.map((t) => `${esc(t.investigation)} <span style="color:${t.result_status === "Results Received" ? "var(--info)" : "var(--ink-mute)"}">(${t.category === "Imaging" ? "imaging" : "lab"}${t.result_status === "Results Received" ? ", received" : ""})</span>`).join(" · ")}</div></div>
                 <div class="qcard__side">${wait(r.wait_minutes, 1440, 4320)}
                     <span class="btn ${r.received ? "btn--signal" : ""} btn--sm">${r.received ? "Review results" : "Open"}</span></div></div>`).join("")
-            : empty("No investigations awaiting results.");
+            : emptyTile('<path d="M9 3h6v4l4 11a2 2 0 0 1-2 3H7a2 2 0 0 1-2-3l4-11z"/>', "No investigations awaiting results.");
         // Clicking the patient reopens the consultation they were referred from. With results in, it opens on the review
         // tab; otherwise on the plan, where the doctor can also prescribe and finish.
         $$("#results [data-review]").forEach((c) => {
@@ -74,18 +94,18 @@
             c.addEventListener("keydown", (e) => { if (e.key === "Enter") open(); });
         });
 
+        setCount("#open-meta", d.in_progress.length);
         $("#progress").innerHTML = d.in_progress.length
             ? d.in_progress.map((r) => queueCard(r, `<button class="btn btn--sm" data-open="${esc(r.visit)}">Continue</button>`)).join("")
-            : empty("None open.");
-
-        $("#flight").innerHTML = d.in_flight.length
-            ? d.in_flight.map((r) => `<div class="qcard"><div class="qcard__stripe"></div>
-                <div><div class="qcard__name">${esc(r.patient_name)} ${typeTag(r.patient_type)}</div>
-                <div class="qcard__meta">${esc(r.visit)} · ${esc(ageSex(r))}</div></div>
-                <div class="qcard__side">${pill(r.status, "warn")}
-                <button class="btn btn--link btn--sm" data-open="${esc(r.visit)}">Open</button></div></div>`).join("")
-            : empty("No one at the pharmacy.");
-        $$("[data-open]").forEach((b) => b.addEventListener("click", () => openVisit(b.dataset.open)));
+            : emptyTile('<path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/>', "No consultations open right now.");
+        $$("[data-open]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); openVisit(b.dataset.open); }));
+        // the whole waiting / open card opens the consultation, not only its button
+        $$("#waiting .qcard, #progress .qcard").forEach((c) => {
+            const btn = $("[data-open]", c);
+            if (!btn) return;
+            c.classList.add("qcard--link");
+            c.addEventListener("click", () => openVisit(btn.dataset.open));
+        });
     }
 
     const FIT_CLS = { Fit: "good", "Fit with Restrictions": "warn", "Temporarily Unfit": "warn", Unfit: "bad", "Pending Investigations": "info" };
@@ -111,29 +131,38 @@
         $$("[data-scope]", m.body).forEach((b) => b.addEventListener("click", () => { open(b.dataset.scope); m.close(); }));
     }
 
-    function renderCompleted(rows) {
-        $("#completed").innerHTML = rows.length ? `<table class="dtable"><tr><th>Time</th><th>Patient</th><th>Type</th><th>Diagnosis</th><th class="num">Sick-off</th><th>Outcome</th><th></th></tr>
-            ${rows.map((r) => `<tr><td>${timeOf(r.consultation_date)}</td><td><b style="color:var(--ink)">${esc(r.patient_name)}</b><br><span class="printnote">${esc(ageSex(r))}</span></td>
-            <td>${typeTag(r.patient_type)}</td><td>${esc(r.diagnoses || (r.consultation_type !== "Consultation" ? r.consultation_type : "—"))}</td><td class="num">${r.sick_leave_days || "—"}</td>
-            <td>${outcome(r)}</td>${fileCell(r)}</tr>`).join("")}</table>` : empty("No completed consultations yet today.");
-        bindFiles($("#completed"));
-    }
+    // ---- Patients seen: by date range, with quick Today / This week / This month
+    const iso = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    const now = new Date();
+    $("#s-from").value = $("#s-to").value = iso(now);
+    const QUICK = {
+        today: () => [now, now],
+        week: () => { const s = new Date(now); s.setDate(s.getDate() - ((s.getDay() + 6) % 7)); return [s, now]; },
+        month: () => [new Date(now.getFullYear(), now.getMonth(), 1), now],
+    };
+    const markQuick = (k) => $$("[data-sq]").forEach((b) => b.classList.toggle("on", b.dataset.sq === k));
+    $$("[data-sq]").forEach((b) => b.addEventListener("click", () => {
+        const [a, z] = QUICK[b.dataset.sq](); $("#s-from").value = iso(a); $("#s-to").value = iso(z); markQuick(b.dataset.sq); loadSeen();
+    }));
+    ["#s-from", "#s-to"].forEach((id) => $(id).addEventListener("change", () => { markQuick(""); loadSeen(); }));
+    let searchTimer;
+    $("#s-q").addEventListener("input", () => { clearTimeout(searchTimer); searchTimer = setTimeout(loadSeen, 300); });
 
-    async function loadMonth() {
-        const d = await call("consultation.seen_month");
-        const s = d.summary;
-        $("#month-meta").textContent = d.month;
-        kpis($("#month-kpis"), [
-            { label: "Seen This Month", value: s.total, cls: "good", unit: d.month },
-            { label: "Employees Treated", value: s.employees, unit: "Patients seen" },
-            { label: "Referred Out", value: s.referred, cls: s.referred ? "warn" : "", unit: "To other facilities" },
-            { label: "Sick-off Days", value: s.sick_days, unit: `${s.work_related} work-related cases` },
+    async function loadSeen() {
+        const d = await call("consultation.seen", { from_date: $("#s-from").value, to_date: $("#s-to").value, q: $("#s-q").value });
+        const s = d.summary, one = d.range.from === d.range.to, P = Desk.PALETTE;
+        $("#seen-meta").textContent = one ? Desk.dateOf(d.range.from) : `${d.range.from} → ${d.range.to}`;
+        Desk.livelyTiles($("#seen-kpis"), [
+            { label: "Patients Seen", value: s.total, color: P[6], icon: ICON('<path d="M20 6 9 17l-5-5"/>'), unit: one ? "In this day" : "In this period" },
+            { label: "Employees Treated", value: s.employees, color: P[0], icon: ICON('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>'), unit: "Patients seen" },
+            { label: "Referred Out", value: s.referred, color: P[1], icon: ICON('<path d="M5 12h14M13 6l6 6-6 6"/>'), unit: "To other facilities" },
+            { label: "Sick-off Days", value: s.sick_days, color: P[5], icon: ICON('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'), unit: `${s.work_related} work-related cases` },
         ]);
-        $("#seen-month").innerHTML = d.rows.length ? `<table class="dtable"><tr><th>Date</th><th>Patient</th><th>Type</th><th>Diagnosis</th><th class="num">Sick-off</th><th>Outcome</th><th></th></tr>
-            ${d.rows.map((r) => `<tr><td>${esc(dateOf(r.consultation_date).slice(5))} ${timeOf(r.consultation_date)}</td><td><b style="color:var(--ink)">${esc(r.patient_name)}</b><br><span class="printnote">${esc(ageSex(r))}</span></td>
+        $("#seen-rows").innerHTML = d.rows.length ? `<table class="dtable"><tr><th>${one ? "Time" : "Date"}</th><th>Patient</th><th>Type</th><th>Diagnosis</th><th class="num">Sick-off</th><th>Outcome</th><th></th></tr>
+            ${d.rows.map((r) => `<tr><td>${one ? timeOf(r.consultation_date) : `${esc(dateOf(r.consultation_date).slice(5))} ${timeOf(r.consultation_date)}`}</td><td><b style="color:var(--ink)">${esc(r.patient_name)}</b><br><span class="printnote">${esc(ageSex(r))}</span></td>
             <td>${typeTag(r.patient_type)}</td><td>${esc(r.diagnoses || (r.consultation_type !== "Consultation" ? r.consultation_type : "—"))}</td><td class="num">${r.sick_leave_days || "—"}</td>
-            <td>${outcome(r)}</td>${fileCell(r)}</tr>`).join("")}</table>` : empty("No completed consultations yet this month.");
-        bindFiles($("#seen-month"));
+            <td>${outcome(r)}</td>${fileCell(r)}</tr>`).join("")}</table>` : empty("No patients seen in this period.");
+        bindFiles($("#seen-rows"));
     }
 
     async function loadInsights() {

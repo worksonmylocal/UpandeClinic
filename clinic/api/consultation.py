@@ -2,7 +2,7 @@
 
 import frappe
 from frappe import _
-from frappe.utils import add_days, cint, get_first_day, nowdate
+from frappe.utils import add_days, cint, getdate, nowdate
 
 from clinic import stock
 from clinic.api.common import (
@@ -48,13 +48,6 @@ def dashboard():
 	for row in waiting:
 		row.wait_minutes = minutes_since(row.since)
 
-	in_flight = frappe.get_all(
-		"Clinic Visit",
-		filters={"status": "Waiting Pharmacy"},
-		fields=["name as visit", "patient_name", "patient_type", "status", "sex", "age_years"],
-		order_by="modified asc",
-	)
-
 	results = frappe.db.sql(
 		"""
 		SELECT c.name AS consultation, c.visit, c.patient_name, c.patient_type, c.sex, c.age_years,
@@ -77,20 +70,6 @@ def dashboard():
 		row.tests = [
 			dict(zip(("investigation", "category", "result_status"), t.split("|"))) for t in row.tests.split("~~")
 		]
-
-	completed = frappe.db.sql(
-		"""
-		SELECT c.name AS consultation, c.visit, c.patient_name, c.patient_type, c.sex, c.age_years,
-			c.consultation_date, c.consultation_type, c.fitness_status, c.refer_out, c.sick_leave_days,
-			(SELECT GROUP_CONCAT(d.diagnosis SEPARATOR ', ') FROM `tabClinic Consultation Diagnosis` d
-				WHERE d.parent = c.name) AS diagnoses
-		FROM `tabClinic Consultation` c
-		WHERE c.status = 'Completed' AND c.consultation_date >= %s
-		ORDER BY c.consultation_date DESC
-		""",
-		start,
-		as_dict=True,
-	)
 
 	today = frappe.db.sql(
 		"""
@@ -134,8 +113,6 @@ def dashboard():
 		"waiting": waiting,
 		"in_progress": in_progress,
 		"results": results,
-		"in_flight": in_flight,
-		"completed": completed,
 	}
 
 
@@ -426,10 +403,14 @@ def add_drug(drug_name):
 
 
 @frappe.whitelist()
-def seen_month():
-	"""Consultations completed since the first of this month."""
+def seen(from_date=None, to_date=None, q=None):
+	"""Patients whose consultation has been completed in a date range (today when none is given), for the Patients seen tab."""
 	require("consultation")
-	first = get_first_day(nowdate())
+	start = getdate(from_date or nowdate())
+	end = getdate(to_date or start)
+	if end < start:
+		start, end = end, start
+	search = (q or "").strip()
 	rows = frappe.db.sql(
 		"""
 		SELECT c.name AS consultation, c.visit, c.patient_name, c.patient_type, c.sex, c.age_years,
@@ -437,14 +418,15 @@ def seen_month():
 			(SELECT GROUP_CONCAT(d.diagnosis SEPARATOR ', ') FROM `tabClinic Consultation Diagnosis` d
 				WHERE d.parent = c.name) AS diagnoses
 		FROM `tabClinic Consultation` c
-		WHERE c.status = 'Completed' AND c.consultation_date >= %s
-		ORDER BY c.consultation_date DESC
+		WHERE c.status = 'Completed' AND c.consultation_date BETWEEN %(a)s AND %(b)s
+			AND (%(q)s = '' OR c.patient_name LIKE %(like)s OR c.name LIKE %(like)s)
+		ORDER BY c.consultation_date DESC LIMIT 500
 		""",
-		f"{first} 00:00:00",
+		{"a": f"{start} 00:00:00", "b": f"{end} 23:59:59", "q": search, "like": f"%{search}%"},
 		as_dict=True,
 	)
 	return {
-		"month": frappe.utils.formatdate(first, "MMMM yyyy"),
+		"range": {"from": str(start), "to": str(end)},
 		"rows": rows,
 		"summary": {
 			"total": len(rows),
