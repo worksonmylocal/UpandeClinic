@@ -15,28 +15,46 @@
 <div class="page">
   <div class="pagehead" id="pagehead"></div>
   <div id="view-queue">
-    <div class="kpi-grid" id="kpis"><div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
+    <div class="live-grid" id="kpis"><div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
     <div class="tabs">
       <button class="tab on" data-tab="queue">Queue</button>
-      <button class="tab" data-tab="done">Seen Today</button>
-      <button class="tab" data-tab="month">Seen This Month</button>
+      <button class="tab" data-tab="seen">Patients seen</button>
       <button class="tab" data-tab="inc">Accidents &amp; Incidents</button>
       <button class="tab" data-tab="insights">Insights</button>
     </div>
     <div class="tabpanel on" id="tab-queue">
-      <div class="row-2-eq">
-        <div class="card"><div class="card__head"><h3>Waiting for Consultation</h3><span class="meta" id="waiting-meta"></span></div><div class="queue" id="waiting"><div class="skel"></div></div></div>
-        <div>
-          <div class="card"><div class="card__head"><h3>Lab Results Ready — Back to You</h3><span class="meta" id="ready-meta"></span></div><div class="queue" id="ready"><div class="skel"></div></div></div>
-          <div class="card"><div class="card__head"><h3>My Open Consultations</h3></div><div class="queue" id="progress"><div class="skel"></div></div></div>
-          <div class="card"><div class="card__head"><h3>At Lab / Pharmacy</h3></div><div class="queue" id="flight"><div class="skel"></div></div></div>
+      <div class="qgrid">
+        <div class="qtile" id="tile-waiting" style="--c:#e07a3a">
+          <div class="qtile__head"><span class="qtile__ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><h3>Awaiting Consultation</h3><span class="qtile__count" id="waiting-meta">0</span></div>
+          <div class="queue" id="waiting"><div class="skel"></div></div>
+        </div>
+        <div class="qcol">
+          <div class="qtile" id="tile-results" style="--c:#8a4fd0">
+            <div class="qtile__head"><span class="qtile__ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6v4l4 11a2 2 0 0 1-2 3H7a2 2 0 0 1-2-3l4-11z"/><path d="M8.5 14h7"/></svg></span><h3>Lab Results Ready</h3><span class="qtile__count" id="results-meta">0</span></div>
+            <div class="queue" id="ready"><div class="skel"></div></div>
+          </div>
+          <div class="qtile" id="tile-open" style="--c:#2c6bb3">
+            <div class="qtile__head"><span class="qtile__ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5M9 13h6M9 17h4"/></svg></span><h3>Open Consultations</h3><span class="qtile__count" id="open-meta">0</span></div>
+            <div class="queue" id="progress"><div class="skel"></div></div>
+          </div>
+          <div class="qtile" id="tile-flight" style="--c:#228883">
+            <div class="qtile__head"><span class="qtile__ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/></svg></span><h3>At Lab / Pharmacy</h3><span class="qtile__count" id="flight-meta">0</span></div>
+            <div class="queue" id="flight"><div class="skel"></div></div>
+          </div>
         </div>
       </div>
     </div>
-    <div class="tabpanel" id="tab-done"><div class="card"><div class="card__head"><h3>Consultations Completed Today</h3></div><div id="completed"><div class="skel"></div></div></div></div>
-    <div class="tabpanel" id="tab-month">
-      <div class="kpi-grid" id="month-kpis"></div>
-      <div class="card"><div class="card__head"><h3>Consultations Completed This Month</h3><span class="meta" id="month-meta"></span></div><div class="tscroll" id="seen-month"><div class="skel"></div></div></div>
+    <div class="tabpanel" id="tab-seen">
+      <div class="card" style="padding:18px 22px;margin-bottom:18px">
+        <div class="att-filters">
+          <div class="field"><label>From</label><input type="date" id="s-from"></div>
+          <div class="field"><label>To</label><input type="date" id="s-to"></div>
+          <div class="field att-q"><label>Patient</label><input type="text" id="s-q" placeholder="Search by name"></div>
+          <div class="att-quick"><button class="btn btn--sm on" data-sq="today">Today</button><button class="btn btn--sm" data-sq="week">This week</button><button class="btn btn--sm" data-sq="month">This month</button></div>
+        </div>
+      </div>
+      <div class="live-grid" id="seen-kpis"></div>
+      <div class="card"><div class="card__head"><h3>Patients Seen</h3><span class="meta" id="seen-meta"></span></div><div class="tscroll" id="seen-rows"><div class="skel"></div></div></div>
     </div>
     <div class="tabpanel" id="tab-inc">
       <div class="card" style="padding:16px 22px;margin-bottom:18px"><div class="att-filters" style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end">
@@ -57,11 +75,18 @@
       <div class="card"><div class="card__head"><h3>Register</h3><span class="meta" id="inc-meta"></span></div><div class="tscroll" id="inc-table"><div class="skel"></div></div></div>
     </div>
     <div class="tabpanel" id="tab-insights">
+      <div class="ins-bar"><div id="period"></div><span class="meta" id="range-meta" style="font-size:12px;color:var(--ink-mute)"></span></div>
       <div class="row-2-eq">
-        <div class="card chart-wrap"><div class="card__head"><h3>Top Diagnoses — Last 30 Days</h3><div class="legend"><span><i style="background:#2c6bb3"></i>Employees</span><span><i style="background:#228883"></i>Community</span></div></div><canvas id="dx-chart" height="240"></canvas></div>
-        <div class="card chart-wrap"><div class="card__head"><h3>Consultations — Last 14 Days</h3></div><canvas id="day-chart" height="240"></canvas></div>
+        <div class="card"><div class="card__head"><h3>Top Diagnoses</h3><span class="meta" id="dx-meta"></span></div>
+          <div class="ring" style="max-width:240px"><canvas id="dx-chart" width="240" height="240"></canvas><div class="ring__mid" id="dx-mid"></div></div>
+          <div style="margin-top:20px" id="dx-rank"><div class="skel"></div></div></div>
+        <div>
+          <div class="card"><div class="card__head"><h3>Consultation Duration</h3><span class="meta" id="dur-meta"></span></div><div class="live-grid" id="duration" style="margin-bottom:0"></div></div>
+          <div class="card"><div class="card__head"><h3>Workdays Prescribed</h3><span class="meta" id="days-meta"></span></div><div class="live-grid" id="workdays" style="margin-bottom:0"></div></div>
+        </div>
       </div>
-      <div class="card"><div class="card__head"><h3>Workload — Last 30 Days</h3></div><div class="kpi-grid" id="workload" style="margin-bottom:0"></div></div>
+      <div class="card"><div class="card__head"><h3>Workload</h3><span class="meta" id="load-meta"></span></div><div class="live-grid" id="workload" style="margin-bottom:0"></div></div>
+      <div class="card chart-wrap"><div class="card__head"><h3 id="series-title">Consultations</h3></div><div style="position:relative;height:260px"><canvas id="day-chart"></canvas></div></div>
     </div>
   </div>
   <div id="view-ws" style="display:none"></div>

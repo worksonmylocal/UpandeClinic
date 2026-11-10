@@ -2,7 +2,7 @@
 
 import frappe
 from frappe import _
-from frappe.utils import add_days, cint, get_first_day, nowdate
+from frappe.utils import add_days, cint, get_first_day, getdate, now_datetime, nowdate
 
 from clinic import billing
 from clinic.setup import ensure_drug_group
@@ -10,6 +10,7 @@ from clinic.api.common import (
 	clean,
 	minutes_since,
 	patient_card,
+	period_range,
 	pick,
 	require,
 	require_any,
@@ -129,52 +130,118 @@ def dashboard():
 
 
 @frappe.whitelist()
-def insights():
+def insights(period="day"):
+	"""Doctor insights for today, this week or this month."""
 	require("consultation")
+	first, last = period_range(period)
+	p = {"a": f"{first} 00:00:00", "b": f"{last} 23:59:59"}
 	top_diagnoses = frappe.db.sql(
 		"""
-		SELECT d.diagnosis AS label,
-			COUNT(DISTINCT IF(c.patient_type = 'Employee', c.name, NULL)) AS employees,
-			COUNT(DISTINCT IF(c.patient_type = 'Community Member', c.name, NULL)) AS community,
-			COUNT(DISTINCT c.name) AS total
+		SELECT d.diagnosis AS label, COUNT(DISTINCT c.name) AS total
 		FROM `tabClinic Consultation Diagnosis` d JOIN `tabClinic Consultation` c ON c.name = d.parent
-		WHERE DATE(c.consultation_date) >= %s
+		WHERE c.consultation_date BETWEEN %(a)s AND %(b)s
 		GROUP BY d.diagnosis ORDER BY total DESC LIMIT 8
 		""",
-		add_days(nowdate(), -29),
-		as_dict=True,
-	)
-	by_day = frappe.db.sql(
-		"""
-		SELECT DATE(consultation_date) AS day,
-			SUM(patient_type = 'Employee') AS employees,
-			SUM(patient_type = 'Community Member') AS community
-		FROM `tabClinic Consultation` WHERE DATE(consultation_date) >= %s
-		GROUP BY DATE(consultation_date) ORDER BY day
-		""",
-		add_days(nowdate(), -13),
+		p,
 		as_dict=True,
 	)
 	workload = frappe.db.sql(
 		"""
 		SELECT COUNT(*) AS consultations,
+			COUNT(DISTINCT patient) AS patients,
 			IFNULL(SUM(refer_out), 0) AS referrals,
 			IFNULL(SUM(work_related), 0) AS work_related,
-			IFNULL(SUM(sick_leave_days), 0) AS sick_days,
 			IFNULL(SUM(follow_up_required), 0) AS follow_ups,
+			IFNULL(SUM(sick_leave_days), 0) AS sick_days,
+			IFNULL(SUM(light_duty_days), 0) AS light_duty_days,
+			IFNULL(SUM(sick_leave_days > 0), 0) AS sick_offs,
+			IFNULL(SUM(light_duty_days > 0), 0) AS light_duties,
+			COUNT(DISTINCT IF(sick_leave_days > 0, patient, NULL)) AS sick_employees,
 			(SELECT COUNT(*) FROM `tabClinic Lab Request Item` r JOIN `tabClinic Consultation` c2
-				ON c2.name = r.parent WHERE DATE(c2.consultation_date) >= %(since)s) AS lab_requests,
-			(SELECT COUNT(*) FROM `tabClinic Prescription Item` p JOIN `tabClinic Consultation` c3
-				ON c3.name = p.parent WHERE DATE(c3.consultation_date) >= %(since)s) AS prescriptions
-		FROM `tabClinic Consultation` WHERE DATE(consultation_date) >= %(since)s
+				ON c2.name = r.parent WHERE c2.consultation_date BETWEEN %(a)s AND %(b)s) AS lab_requests,
+			(SELECT COUNT(*) FROM `tabClinic Prescription Item` x JOIN `tabClinic Consultation` c3
+				ON c3.name = x.parent WHERE c3.consultation_date BETWEEN %(a)s AND %(b)s) AS prescriptions,
+			(SELECT COUNT(*) FROM `tabClinic Incident` i WHERE i.incident_date BETWEEN %(da)s AND %(db)s) AS incidents
+		FROM `tabClinic Consultation` WHERE consultation_date BETWEEN %(a)s AND %(b)s
 		""",
-		{"since": add_days(nowdate(), -29)},
+		{**p, "da": str(first), "db": str(last)},
 		as_dict=True,
 	)[0]
+	# From when the consultation started to when the doctor first closed it (completed it or sent the patient on)
+	timed = frappe.db.sql(
+		"""
+		SELECT TIMESTAMPDIFF(MINUTE, consultation_date, ended_on) AS minutes FROM `tabClinic Consultation`
+		WHERE consultation_date BETWEEN %(a)s AND %(b)s AND ended_on IS NOT NULL AND ended_on >= consultation_date
+		""",
+		p,
+		pluck="minutes",
+	)
+	if period == "day":
+		rows = frappe.db.sql(
+			"""SELECT HOUR(consultation_date) AS k, COUNT(*) AS n FROM `tabClinic Consultation`
+			WHERE consultation_date BETWEEN %(a)s AND %(b)s GROUP BY k""",
+			p,
+			as_dict=True,
+		)
+		series = {"labels": [f"{h:02d}:00" for h in range(5, 22)], "values": [next((r.n for r in rows if r.k == h), 0) for h in range(5, 22)]}
+	else:
+		rows = frappe.db.sql(
+			"""SELECT DATE(consultation_date) AS k, COUNT(*) AS n FROM `tabClinic Consultation`
+			WHERE consultation_date BETWEEN %(a)s AND %(b)s GROUP BY k""",
+			p,
+			as_dict=True,
+		)
+		days = [add_days(first, i) for i in range((last - first).days + 1)]
+		series = {"labels": [d.strftime("%d %b") for d in days], "values": [next((r.n for r in rows if r.k == d), 0) for d in days]}
 	return {
+		"period": period,
+		"range": {"from": str(first), "to": str(last)},
 		"top_diagnoses": top_diagnoses,
-		"by_day": [{**row, "day": str(row.day)} for row in by_day],
+		"diagnosed": sum(r.total for r in top_diagnoses),
 		"workload": workload,
+		"duration": {
+			"measured": len(timed),
+			"average": round(sum(timed) / len(timed)) if timed else None,
+			"shortest": min(timed) if timed else None,
+			"longest": max(timed) if timed else None,
+		},
+		"series": series,
+	}
+
+
+@frappe.whitelist()
+def seen(from_date=None, to_date=None, q=None):
+	"""Patients whose consultation has been completed in a date range (today when none is given)."""
+	require("consultation")
+	start = getdate(from_date or nowdate())
+	end = getdate(to_date or start)
+	if end < start:
+		start, end = end, start
+	search = (q or "").strip()
+	rows = frappe.db.sql(
+		"""
+		SELECT c.name AS consultation, c.visit, c.patient_name, c.patient_type, c.sex, c.age_years,
+			c.consultation_date, c.refer_out, c.sick_leave_days, c.work_related,
+			(SELECT GROUP_CONCAT(d.diagnosis SEPARATOR ', ') FROM `tabClinic Consultation Diagnosis` d
+				WHERE d.parent = c.name) AS diagnoses
+		FROM `tabClinic Consultation` c
+		WHERE c.status = 'Completed' AND c.consultation_date BETWEEN %(a)s AND %(b)s
+			AND (%(q)s = '' OR c.patient_name LIKE %(like)s OR c.name LIKE %(like)s)
+		ORDER BY c.consultation_date DESC LIMIT 500
+		""",
+		{"a": f"{start} 00:00:00", "b": f"{end} 23:59:59", "q": search, "like": f"%{search}%"},
+		as_dict=True,
+	)
+	return {
+		"range": {"from": str(start), "to": str(end)},
+		"rows": rows,
+		"summary": {
+			"total": len(rows),
+			"employees": sum(1 for r in rows if r.patient_type == "Employee"),
+			"referred": sum(1 for r in rows if r.refer_out),
+			"sick_days": sum(r.sick_leave_days or 0 for r in rows),
+			"work_related": sum(1 for r in rows if r.work_related),
+		},
 	}
 
 
@@ -349,6 +416,8 @@ def action(name, action, data=None):
 		doc.complete_consultation()
 	else:
 		frappe.throw(_("Unknown action {0}").format(action))
+	if not doc.ended_on:
+		doc.db_set("ended_on", now_datetime(), update_modified=False)
 	return {
 		"name": doc.name,
 		"status": doc.status,

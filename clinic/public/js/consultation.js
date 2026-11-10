@@ -9,31 +9,46 @@
         sub: "Patients sent from triage, results back from the lab, and everything you need to treat them",
         tools: `<button class="iconbtn" id="refresh" title="Refresh">${Desk.REFRESH_ICON}</button>`,
     });
-    Desk.tabs((tab) => { if (tab === "insights") loadInsights(); else if (tab === "month") loadMonth(); else if (tab === "inc") loadIncReport(); });
+    Desk.tabs((tab) => { if (tab === "insights") loadInsights(); else if (tab === "seen") loadSeen(); else if (tab === "inc") loadIncReport(); });
     $("#refresh").addEventListener("click", () => { loadAll(); toast("Refreshed"); });
 
     const M = await masters();
     const PRIORITY_ORDER = { Emergency: 0, Urgent: 1, Routine: 2 };
     let dash, ws, state, dirty = false;
+    const period = Desk.periodToggle($("#period"), () => loadInsights(), "day");
 
     // ============================================================ queue
     async function loadAll() {
         dash = await call("consultation.dashboard");
         renderKpis(dash.kpis);
         renderQueues(dash);
-        renderCompleted(dash.completed);
         if ($("#tab-insights").classList.contains("on")) loadInsights();
-        if ($("#tab-month").classList.contains("on")) loadMonth();
+        if ($("#tab-seen").classList.contains("on")) loadSeen();
     }
 
+    // Top tiles: lively, and each one takes you to what it counts
+    const ICON = (path) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
+    const GO = (id) => () => {
+        const tab = $('.tab[data-tab="queue"]'); if (tab && !tab.classList.contains("on")) tab.click();
+        const t = $(id); if (!t) return;
+        t.scrollIntoView({ behavior: "smooth", block: "center" });
+        t.classList.remove("flash"); void t.offsetWidth; t.classList.add("flash");
+    };
     function renderKpis(k) {
-        kpis($("#kpis"), [
-            { label: "Waiting for Doctor", value: k.waiting, cls: k.waiting ? "warn" : "", unit: k.emergency ? `${k.emergency} urgent / emergency` : k.waiting ? `Longest wait ${Desk.duration(k.longest_wait)}` : "Queue is clear" },
-            { label: "Lab Results Ready", value: k.results_ready, cls: k.results_ready ? "info" : "", unit: "Awaiting your review" },
-            { label: "Open Consultations", value: k.in_progress, unit: "In progress now" },
-            { label: "Seen Today", value: k.seen_today, cls: "good", unit: `${Desk.split(k.employees_today, k.community_today)}` },
-            { label: "Avg Wait for Doctor", value: `${k.avg_wait}<span style="font-size:14px;font-weight:500"> min</span>`, unit: "Triage → consultation, today" },
-            { label: "Referred Out / Sick-off", value: `${k.referrals_out} <span style="font-size:14px;color:var(--ink-mute)">/ ${k.sick_days}d</span>`, unit: `${k.work_related} work-related · ${k.follow_ups_week} follow-ups this week` },
+        const P = Desk.PALETTE;
+        Desk.livelyTiles($("#kpis"), [
+            { label: "Awaiting Consultation", value: k.waiting, color: P[1], hint: "See the queue", onClick: GO("#tile-waiting"),
+              icon: ICON('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'), unit: k.emergency ? `${k.emergency} urgent / emergency` : k.waiting ? `Longest wait ${Desk.duration(k.longest_wait)}` : "Queue is clear" },
+            { label: "Lab Results Ready", value: k.results_ready, color: P[4], hint: "See the list", onClick: GO("#tile-results"),
+              icon: ICON('<path d="M9 3h6v4l4 11a2 2 0 0 1-2 3H7a2 2 0 0 1-2-3l4-11z"/>'), unit: k.results_ready ? "Awaiting your review" : "No results waiting" },
+            { label: "Open Consultations", value: k.in_progress, color: P[0], hint: "See the list", onClick: GO("#tile-open"),
+              icon: ICON('<path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/>'), unit: "In progress now" },
+            { label: "Seen Today", value: k.seen_today, color: P[6], hint: "Patients seen", onClick: () => $('.tab[data-tab="seen"]').click(),
+              icon: ICON('<path d="M20 6 9 17l-5-5"/>'), unit: Desk.split(k.employees_today, k.community_today) },
+            { label: "Avg Wait for Doctor", value: `${k.avg_wait}<span style="font-size:15px;font-weight:600"> min</span>`, color: P[3],
+              icon: ICON('<path d="M5 3h14M5 21h14M7 3v4a5 5 0 0 0 10 0V3M7 21v-4a5 5 0 0 1 10 0v4"/>'), unit: "Triage → consultation, today" },
+            { label: "Referred Out / Sick-off", value: `${k.referrals_out} <span style="font-size:15px;font-weight:600;color:var(--ink-mute)">/ ${k.sick_days}d</span>`, color: P[5],
+              icon: ICON('<path d="M5 12h14M13 6l6 6-6 6"/>'), unit: `${k.work_related} work-related · ${k.follow_ups_week} follow-ups this week` },
         ]);
     }
 
@@ -47,53 +62,100 @@
             <div class="qcard__side">${r.wait_minutes != null ? wait(r.wait_minutes, 20, 45) : ""}${button}</div></div>`;
     }
 
+    const emptyTile = (path, text) => `<div class="empty"><span class="empty__ico">${ICON(path)}</span>${esc(text)}</div>`;
+    function setCount(id, n) {
+        const el = $(id);
+        if (el.textContent !== String(n)) { el.textContent = n; el.classList.remove("pop"); void el.offsetWidth; el.classList.add("pop"); }
+    }
+
     function renderQueues(d) {
-        $("#waiting-meta").textContent = d.waiting.length ? `${d.waiting.length} waiting` : "";
+        setCount("#waiting-meta", d.waiting.length);
         $("#waiting").innerHTML = d.waiting.length
             ? d.waiting.map((r) => queueCard(r, `<button class="btn btn--primary btn--sm" data-open="${esc(r.visit)}">Start consultation</button>`)).join("")
-            : empty("No patients waiting.");
+            : emptyTile('<path d="M20 6 9 17l-5-5"/>', "No patients waiting. You're all caught up.");
 
-        $("#ready-meta").textContent = d.results_ready.length ? `${d.results_ready.length} to review` : "";
+        setCount("#results-meta", d.results_ready.length);
         $("#ready").innerHTML = d.results_ready.length
             ? d.results_ready.map((r) => queueCard(r, `<button class="btn btn--signal btn--sm" data-open="${esc(r.visit)}">Review results</button>`,
                 `<div class="qcard__note">${r.tests.map((t) => `${esc(t.test_type)}: <b style="color:${t.interpretation === "Positive" || t.interpretation === "Abnormal" ? "var(--bad)" : "var(--good)"}">${esc(t.interpretation || t.status)}</b>`).join(" · ")}</div>`)).join("")
-            : empty("No lab results waiting.");
+            : emptyTile('<path d="M9 3h6v4l4 11a2 2 0 0 1-2 3H7a2 2 0 0 1-2-3l4-11z"/>', "No lab results waiting.");
 
+        setCount("#open-meta", d.in_progress.length);
         $("#progress").innerHTML = d.in_progress.length
             ? d.in_progress.map((r) => queueCard(r, `<button class="btn btn--sm" data-open="${esc(r.visit)}">Continue</button>`)).join("")
-            : empty("None open.");
+            : emptyTile('<path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/>', "No consultations open right now.");
 
+        setCount("#flight-meta", d.in_flight.length);
         $("#flight").innerHTML = d.in_flight.length
             ? d.in_flight.map((r) => `<div class="qcard"><div class="qcard__stripe"></div>
                 <div><div class="qcard__name">${esc(r.patient_name)} ${typeTag(r.patient_type)}</div>
                 <div class="qcard__meta">${esc(r.visit)} · ${esc(ageSex(r))}</div></div>
                 <div class="qcard__side">${pill(r.status, r.status === "Waiting Lab" ? "info" : "warn")}
                 <button class="btn btn--link btn--sm" data-open="${esc(r.visit)}">Open</button></div></div>`).join("")
-            : empty("No one at the lab or pharmacy.");
-        $$("[data-open]").forEach((b) => b.addEventListener("click", () => openVisit(b.dataset.open)));
+            : emptyTile('<path d="M21 8l-9-5-9 5v8l9 5 9-5z"/>', "No one at the lab or pharmacy.");
+
+        $$("[data-open]").forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); openVisit(b.dataset.open); }));
+        // the whole waiting / open card opens the consultation, not only its button
+        $$("#waiting .qcard, #progress .qcard, #ready .qcard").forEach((c) => {
+            const btn = $("[data-open]", c);
+            if (!btn) return;
+            c.classList.add("qcard--link");
+            c.addEventListener("click", () => openVisit(btn.dataset.open));
+        });
     }
 
-    function renderCompleted(rows) {
-        $("#completed").innerHTML = rows.length ? `<table class="dtable"><tr><th>Time</th><th>Patient</th><th>Type</th><th>Diagnosis</th><th class="num">Sick-off</th><th>Outcome</th></tr>
-            ${rows.map((r) => `<tr><td>${timeOf(r.consultation_date)}</td><td><b style="color:var(--ink)">${esc(r.patient_name)}</b><br><span class="printnote">${esc(ageSex(r))}</span></td>
-            <td>${typeTag(r.patient_type)}</td><td>${esc(r.diagnoses || "—")}</td><td class="num">${r.sick_leave_days || "—"}</td>
-            <td>${r.refer_out ? pill("Referred out", "warn") : pill("Treated", "good")}</td></tr>`).join("")}</table>` : empty("No completed consultations yet today.");
+    const outcome = (r) => (r.refer_out ? pill("Referred out", "warn") : pill("Treated", "good"));
+
+    // "Download file": the doctor chooses between this encounter and the patient's entire file
+    const fileCell = (r) => `<td class="num"><button class="btn btn--sm" data-file="${esc(r.consultation)}" data-patient="${esc(r.patient_name)}" data-when="${esc(dateOf(r.consultation_date))}">Download file</button></td>`;
+    function bindFiles(root) {
+        $$("[data-file]", root).forEach((b) => b.addEventListener("click", () => chooseFile(b.dataset.file, b.dataset.patient, b.dataset.when)));
+    }
+    function chooseFile(consultation, patient, when) {
+        const open = (scope) => window.open(`/clinic/patientfile?consultation=${encodeURIComponent(consultation)}&scope=${scope}`, "_blank");
+        const choice = (scope, title, note) => `<button type="button" class="btn" data-scope="${scope}" style="display:block;width:100%;text-align:left;white-space:normal;line-height:1.45;padding:16px 18px;margin-bottom:12px;border-radius:16px"><b style="font-size:15px;color:var(--ink)">${title}</b><br><span class="printnote" style="font-weight:400">${note}</span></button>`;
+        const m = modal({
+            title: "Download file", sub: esc(patient),
+            body: `${choice("encounter", "Latest encounter", `Only the encounter of ${esc(when)}: vitals, history, examination, diagnosis, results and treatment.`)}
+                ${choice("full", "Entire file", "Every completed visit on record for this patient, newest first, with a summary of the visits at the front.")}
+                <div class="printnote">The file opens in a new tab. Choose <b>Save as PDF</b> to download it. Each download is logged on the consultation.</div>`,
+            foot: [{ label: "Cancel" }],
+        });
+        $$("[data-scope]", m.body).forEach((b) => b.addEventListener("click", () => { open(b.dataset.scope); m.close(); }));
     }
 
-    async function loadMonth() {
-        const d = await call("consultation.seen_month");
-        const s = d.summary;
-        $("#month-meta").textContent = d.month;
-        kpis($("#month-kpis"), [
-            { label: "Seen This Month", value: s.total, cls: "good", unit: d.month },
-            { label: "Employees / Community", value: `${s.employees} <span style="font-size:14px;color:var(--ink-mute)">/ ${s.community}</span>`, unit: "Patients treated" },
-            { label: "Referred Out", value: s.referred, cls: s.referred ? "warn" : "", unit: "To other facilities" },
-            { label: "Sick-off Days", value: s.sick_days, unit: `${s.work_related} work-related cases` },
+    // ---- Patients seen: by date range, with quick Today / This week / This month
+    const iso = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    const now = new Date();
+    $("#s-from").value = $("#s-to").value = iso(now);
+    const QUICK = {
+        today: () => [now, now],
+        week: () => { const s = new Date(now); s.setDate(s.getDate() - ((s.getDay() + 6) % 7)); return [s, now]; },
+        month: () => [new Date(now.getFullYear(), now.getMonth(), 1), now],
+    };
+    const markQuick = (k) => $$("[data-sq]").forEach((b) => b.classList.toggle("on", b.dataset.sq === k));
+    $$("[data-sq]").forEach((b) => b.addEventListener("click", () => {
+        const [a, z] = QUICK[b.dataset.sq](); $("#s-from").value = iso(a); $("#s-to").value = iso(z); markQuick(b.dataset.sq); loadSeen();
+    }));
+    ["#s-from", "#s-to"].forEach((id) => $(id).addEventListener("change", () => { markQuick(""); loadSeen(); }));
+    let searchTimer;
+    $("#s-q").addEventListener("input", () => { clearTimeout(searchTimer); searchTimer = setTimeout(loadSeen, 300); });
+
+    async function loadSeen() {
+        const d = await call("consultation.seen", { from_date: $("#s-from").value, to_date: $("#s-to").value, q: $("#s-q").value });
+        const s = d.summary, one = d.range.from === d.range.to, P = Desk.PALETTE;
+        $("#seen-meta").textContent = one ? Desk.dateOf(d.range.from) : `${d.range.from} → ${d.range.to}`;
+        Desk.livelyTiles($("#seen-kpis"), [
+            { label: "Patients Seen", value: s.total, color: P[6], icon: ICON('<path d="M20 6 9 17l-5-5"/>'), unit: one ? "In this day" : "In this period" },
+            { label: "Employees Treated", value: s.employees, color: P[0], icon: ICON('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>'), unit: "Patients seen" },
+            { label: "Referred Out", value: s.referred, color: P[1], icon: ICON('<path d="M5 12h14M13 6l6 6-6 6"/>'), unit: "To other facilities" },
+            { label: "Sick-off Days", value: s.sick_days, color: P[5], icon: ICON('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'), unit: `${s.work_related} work-related cases` },
         ]);
-        $("#seen-month").innerHTML = d.rows.length ? `<table class="dtable"><tr><th>Date</th><th>Patient</th><th>Type</th><th>Diagnosis</th><th class="num">Sick-off</th><th>Outcome</th></tr>
-            ${d.rows.map((r) => `<tr><td>${esc(dateOf(r.consultation_date).slice(5))} ${timeOf(r.consultation_date)}</td><td><b style="color:var(--ink)">${esc(r.patient_name)}</b><br><span class="printnote">${esc(ageSex(r))}</span></td>
+        $("#seen-rows").innerHTML = d.rows.length ? `<table class="dtable"><tr><th>${one ? "Time" : "Date"}</th><th>Patient</th><th>Type</th><th>Diagnosis</th><th class="num">Sick-off</th><th>Outcome</th><th></th></tr>
+            ${d.rows.map((r) => `<tr><td>${one ? timeOf(r.consultation_date) : `${esc(dateOf(r.consultation_date).slice(5))} ${timeOf(r.consultation_date)}`}</td><td><b style="color:var(--ink)">${esc(r.patient_name)}</b><br><span class="printnote">${esc(ageSex(r))}</span></td>
             <td>${typeTag(r.patient_type)}</td><td>${esc(r.diagnoses || "—")}</td><td class="num">${r.sick_leave_days || "—"}</td>
-            <td>${r.refer_out ? pill("Referred out", "warn") : pill("Treated", "good")}</td></tr>`).join("")}</table>` : empty("No completed consultations yet this month.");
+            <td>${outcome(r)}</td>${fileCell(r)}</tr>`).join("")}</table>` : empty("No patients seen in this period.");
+        bindFiles($("#seen-rows"));
     }
 
     // ---- monthly accidents & incidents (register + report)
@@ -129,15 +191,50 @@
     }
 
     async function loadInsights() {
-        const d = await call("consultation.insights");
-        chart("dx-chart", { type: "bar", data: { labels: d.top_diagnoses.map((r) => r.label), datasets: Desk.stackedDatasets(d.top_diagnoses) }, options: { indexAxis: "y", plugins: { legend: { display: false } }, scales: { x: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }, y: { stacked: true, grid: { display: false } } } } });
-        chart("day-chart", { type: "bar", data: { labels: d.by_day.map((r) => r.day.slice(5)), datasets: Desk.stackedDatasets(d.by_day) }, options: { ...Desk.stackedOptions, plugins: { legend: { display: false } } } });
+        const d = await call("consultation.insights", { period: period.value });
+        const WORD = { day: "today", week: "this week", month: "this month" }[period.value];
+        $("#range-meta").textContent = d.range.from === d.range.to ? Desk.dateOf(d.range.from) : `${d.range.from} → ${d.range.to}`;
+        const P = Desk.PALETTE;
+        const ico = (path) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
+
+        // Top diagnoses: a ring and a ranked list (no line charts)
+        const dx = d.top_diagnoses;
+        $("#dx-meta").textContent = d.diagnosed ? `${d.diagnosed} diagnoses ${WORD}` : "";
+        $("#dx-mid").innerHTML = `<b>${d.diagnosed}</b><span>Diagnoses</span>`;
+        chart("dx-chart", { type: "doughnut", data: { labels: dx.map((r) => r.label), datasets: [{ data: dx.length ? dx.map((r) => r.total) : [1], backgroundColor: dx.length ? dx.map((_, i) => P[i % P.length]) : ["rgba(10,10,10,0.06)"], borderWidth: 4, borderColor: "#fff", hoverOffset: 8, borderRadius: 8 }] }, options: { cutout: "68%", plugins: { legend: { display: false }, tooltip: { enabled: dx.length > 0 } } } });
+        Desk.ranked($("#dx-rank"), dx.map((r) => ({ label: r.label, value: r.total, sub: d.diagnosed ? `${Math.round(r.total * 100 / d.diagnosed)}%` : "" })));
+
+        // How long a consultation takes: from when it started to when the doctor closed it
+        const u = d.duration;
+        $("#dur-meta").textContent = u.measured ? `${u.measured} timed ${WORD}` : "";
+        Desk.livelyTiles($("#duration"), u.measured ? [
+            { label: "Average", value: u.average, unit: "minutes per consultation", color: P[0], icon: ico('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>') },
+            { label: "Shortest", value: u.shortest, unit: "minutes", color: P[2], icon: ico('<path d="M5 12h14M13 6l6 6-6 6"/>') },
+            { label: "Longest", value: u.longest, unit: "minutes", color: P[1], icon: ico('<path d="M3 12h14M11 6l6 6-6 6M21 5v14"/>') },
+        ] : []);
+        if (!u.measured) $("#duration").innerHTML = empty("No timed consultations yet. The clock is recorded when a consultation is completed or sent to the pharmacy.");
+
+        // Workdays the doctor has prescribed: rest days and light duty
         const w = d.workload;
-        kpis($("#workload"), [
-            { label: "Consultations", value: w.consultations }, { label: "Lab Requests", value: w.lab_requests, cls: "info" },
-            { label: "Drugs Prescribed", value: w.prescriptions }, { label: "Referred Out", value: w.referrals, cls: "warn" },
-            { label: "Work-related Cases", value: w.work_related, cls: w.work_related ? "bad" : "" }, { label: "Sick-off Days", value: w.sick_days },
+        $("#days-meta").textContent = w.sick_offs || w.light_duties ? `${w.sick_employees} employee${w.sick_employees === 1 ? "" : "s"} off ${WORD}` : "";
+        Desk.livelyTiles($("#workdays"), [
+            { label: "Sick-off days", value: w.sick_days, unit: `${w.sick_offs} sick-off${w.sick_offs === 1 ? "" : "s"}${w.sick_offs ? ` · ${(w.sick_days / w.sick_offs).toFixed(1)} days each` : ""}`, color: P[5], icon: ico('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>') },
+            { label: "Light-duty days", value: w.light_duty_days, unit: `${w.light_duties} case${w.light_duties === 1 ? "" : "s"}`, color: P[3], icon: ico('<path d="M12 3v18M5 9l7-6 7 6"/>') },
         ]);
+
+        // Workload
+        $("#load-meta").textContent = WORD;
+        Desk.livelyTiles($("#workload"), [
+            { label: "Consultations", value: w.consultations, unit: `${w.patients} patient${w.patients === 1 ? "" : "s"}`, color: P[0], icon: ico('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>') },
+            { label: "Investigations", value: w.lab_requests, unit: "requested", color: P[4], icon: ico('<path d="M9 3h6v4l4 11a2 2 0 0 1-2 3H7a2 2 0 0 1-2-3l4-11z"/>') },
+            { label: "Drugs prescribed", value: w.prescriptions, unit: "medicine lines", color: P[2], icon: ico('<rect x="3" y="9" width="18" height="6" rx="3" transform="rotate(-35 12 12)"/><path d="M10 8l4 8" />') },
+            { label: "Referred out", value: w.referrals, unit: "to other facilities", color: P[1], icon: ico('<path d="M5 12h14M13 6l6 6-6 6"/>') },
+            { label: "Work-related", value: w.work_related, unit: `cases · ${w.incidents} accident/incident${w.incidents === 1 ? "" : "s"}`, color: P[5], icon: ico('<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"/>') },
+            { label: "Follow-ups", value: w.follow_ups, unit: "booked", color: P[6], icon: ico('<path d="M20 6 9 17l-5-5"/>') },
+        ]);
+
+        $("#series-title").textContent = period.value === "day" ? "Consultations by Hour" : "Consultations by Day";
+        chart("day-chart", { type: "bar", data: { labels: d.series.labels, datasets: [{ label: "Consultations", data: d.series.values, backgroundColor: d.series.values.map((_, i) => P[i % P.length]), borderRadius: 8, maxBarThickness: 30 }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false } } } });
     }
 
     // ============================================================ routing

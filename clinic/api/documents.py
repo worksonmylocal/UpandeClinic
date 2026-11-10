@@ -297,3 +297,106 @@ def monthly_invoice(month, employer=None):
 		"terms": settings.invoice_terms, "payment_details": settings.payment_details,
 		"printed_by": user_name(frappe.session.user), "printed_on": now_datetime(),
 	}
+
+
+# ------------------------------------------------------------------ patient file
+FILE_SCOPES = ("encounter", "full")
+
+
+def _encounter(doc):
+	"""One consultation as it goes into the patient file."""
+	triage = frappe.db.get_value("Clinic Triage", doc.triage, "*", as_dict=True) if doc.triage else None
+	dispensed = {}
+	if doc.dispensing and frappe.db.get_value("Clinic Dispensing", doc.dispensing, "docstatus") == 1:
+		for row in frappe.get_all("Clinic Dispensing Item", filters={"parent": doc.dispensing}, fields=["drug", "dispensed_qty", "not_available"]):
+			dispensed[row.drug] = row
+	labs = frappe.get_all(
+		"Clinic Lab Test", filters={"visit": doc.visit, "status": ["!=", "Cancelled"]},
+		fields=["name", "test_type", "status", "interpretation", "performed_where", "external_facility", "result_comments", "resulted_on"],
+		order_by="requested_on asc",
+	)
+	for t in labs:
+		t["results"] = frappe.get_all(
+			"Clinic Lab Test Result Item", filters={"parent": t.name}, fields=["parameter", "value", "unit", "reference", "flag"], order_by="idx asc"
+		)
+	systems = [(label, doc.get(f)) for label, f in [("Review of systems", "review_of_systems")] if doc.get(f)]
+	history = [(label, doc.get(f)) for label, f in [
+		("Past medical history", "past_medical_history"), ("Current medication", "current_medication"),
+		("Drug allergies", "drug_allergies"), ("Family history", "family_history"), ("Social history", "social_history"),
+		("Occupational history", "occupational_history")] if doc.get(f)]
+	exam = [(label, doc.get(f)) for label, f in [("General", "general_examination"), ("Systemic", "systemic_examination")] if doc.get(f)]
+	return {
+		"name": doc.name,
+		"visit": doc.visit,
+		"date": doc.consultation_date,
+		"type": doc.patient_type,
+		"doctor": user_name(doc.doctor),
+		"status": doc.status,
+		"triage": triage,
+		"complaint": doc.presenting_complaint,
+		"hpi": doc.history_of_presenting_illness,
+		"systems": systems,
+		"history": history,
+		"exam": exam,
+		"tb_screening": doc.tb_screening,
+		"diagnoses": [{"diagnosis": d.diagnosis, "type": d.diagnosis_type, "notes": d.notes} for d in doc.diagnoses],
+		"impression": doc.impression,
+		"work_related": doc.work_related,
+		"labs": labs,
+		"investigations_notes": doc.investigations_notes,
+		"plan": doc.management_plan,
+		"procedures": doc.procedures_done,
+		"procedure_rows": [{"procedure": r.procedure, "qty": r.qty} for r in doc.get("procedures") or []],
+		"advice": doc.patient_advice,
+		"prescriptions": [
+			{
+				"drug": r.drug_name or r.drug, "dose": r.dose, "route": r.route, "frequency": r.frequency, "days": r.duration_days,
+				"quantity": r.quantity, "instructions": r.instructions,
+				"dispensed": dispensed[r.drug].dispensed_qty if r.drug in dispensed else None,
+				"not_available": bool(r.drug in dispensed and dispensed[r.drug].not_available),
+			}
+			for r in doc.prescriptions
+		],
+		"incidents": frappe.get_all(
+			"Clinic Incident", filters={"visit": doc.visit},
+			fields=["name", "report_type", "severity", "incident_date", "cause", "injury_type", "body_part", "description", "outcome", "lost_days"],
+		),
+		"sick_leave_days": doc.sick_leave_days,
+		"light_duty_days": doc.light_duty_days,
+		"referral": {"facility": doc.referral_facility, "urgency": doc.referral_urgency, "reason": doc.referral_reason, "notes": doc.referral_notes} if doc.refer_out else None,
+		"follow_up": {"date": doc.follow_up_date, "reason": doc.follow_up_reason} if doc.follow_up_required else None,
+	}
+
+
+@frappe.whitelist()
+def patient_file(consultation, scope="encounter"):
+	"""A patient's file for download: just the encounter they were seen in, or every completed encounter on record."""
+	require_any("consultation")
+	if scope not in FILE_SCOPES:
+		frappe.throw(_("Unknown file type {0}").format(scope))
+	doc = frappe.get_doc("Clinic Consultation", consultation)
+	doc.check_permission("read")
+	if scope == "full":
+		names = frappe.get_all(
+			"Clinic Consultation", filters={"patient": doc.patient, "status": "Completed"}, pluck="name",
+			order_by="consultation_date desc", limit_page_length=500,
+		)
+		if consultation not in names:
+			names.insert(0, consultation)
+		docs = [frappe.get_doc("Clinic Consultation", n) for n in names]
+	else:
+		docs = [doc]
+	patient = patient_card(doc.patient)
+	# the file is the patient's most sensitive record: leave a trace of who took a copy
+	doc.add_comment("Info", _("{0} patient file downloaded by {1}").format(
+		_("Full") if scope == "full" else _("Encounter"), user_name(frappe.session.user)))
+	return {
+		"clinic": clinic_profile(),
+		"patient": patient,
+		"scope": scope,
+		"consultation": doc.name,
+		"signer": _signer(doc.doctor),
+		"encounters": [_encounter(d) for d in docs],
+		"printed_by": user_name(frappe.session.user),
+		"printed_on": now_datetime(),
+	}
