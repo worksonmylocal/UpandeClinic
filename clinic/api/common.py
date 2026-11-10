@@ -18,6 +18,7 @@ PAGE_ROLES = {
 	# the HIV testing clinic is open to its own officer alone (managers can always open every page)
 	"hts": ["HTS Officer"],
 	"insights": ["Clinic Doctor"],
+	"patientfiles": ["Clinic Doctor"],
 }
 
 # Clinics a patient can be sent to after triage (in addition to the doctor)

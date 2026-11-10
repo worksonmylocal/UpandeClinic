@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Patient Files · Northlake Medical Centre</title>
+<link rel="icon" type="image/svg+xml" href="/assets/clinic/images/northlake-mark.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Poppins:wght@400;500;600;700&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/clinic/css/clinic_desk.css?v={{ asset_version }}">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div id="topbar"></div>
+<div class="page">
+  <div class="pagehead" id="pagehead"></div>
+  <div class="card" style="padding:18px 22px;margin-bottom:18px">
+    <div class="att-filters">
+      <div class="field att-q"><label>Search</label><input type="text" id="pf-q" placeholder="Name, patient no., ID, phone or staff no."></div>
+      <div class="field"><label>Patients</label><select id="pf-type"><option value="">All</option><option>Employee</option><option>Community Member</option></select></div>
+    </div>
+  </div>
+  <div class="card"><div class="card__head"><h3>Patients</h3><span class="meta" id="pf-meta"></span></div><div class="tscroll" id="pf-rows"><div class="skel"></div></div></div>
+</div>
+<script>window.CLINIC = { csrf: {{ csrf_token | tojson }}, user: {{ frappe.session.user | tojson }} };</script>
+<script src="/assets/clinic/js/clinic_desk.js?v={{ asset_version }}"></script>
+<script src="/assets/clinic/js/patientfiles.js?v={{ asset_version }}"></script>
+</body>
+</html>
