@@ -497,6 +497,7 @@ body[data-desk=antenatal]{--accent-rgb:194,87,122}
 body[data-desk=mch]{--accent-rgb:217,112,58}
 body[data-desk=tb]{--accent-rgb:76,90,166}
 body[data-desk=hts]{--accent-rgb:168,50,74}
+body[data-desk=insights]{--accent-rgb:30,98,122}
 body{--accent:rgb(var(--accent-rgb));--accent-soft:rgba(var(--accent-rgb),.20);--accent-edge:rgba(var(--accent-rgb),.78);--accent-wash:rgba(var(--accent-rgb),.06)}
 
 .card{border:1px solid var(--accent-soft);box-shadow:var(--shadow-card),inset 0 3px 0 var(--accent-edge)}

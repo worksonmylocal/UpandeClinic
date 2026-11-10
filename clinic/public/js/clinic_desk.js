@@ -10,6 +10,7 @@ window.Desk = (function () {
         { key: "mch", label: "MCH & PNC", href: "/clinic/mch" },
         { key: "tb", label: "TB Clinic", href: "/clinic/tb" },
         { key: "hts", label: "HTS", href: "/clinic/hts" },
+        { key: "insights", label: "Insights", href: "/clinic/insights" },
     ];
     const COLORS = { emp: "#2c6bb3", com: "#228883", ink: "#0a0a0a", warn: "#b9770e", bad: "#c4302b", good: "#1a8a3a" };
 
