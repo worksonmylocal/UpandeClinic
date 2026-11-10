@@ -20,6 +20,7 @@
       <button class="tab on" data-tab="queue">Queue</button>
       <button class="tab" data-tab="done">Seen Today</button>
       <button class="tab" data-tab="month">Seen This Month</button>
+      <button class="tab" data-tab="inc">Accidents &amp; Incidents</button>
       <button class="tab" data-tab="insights">Insights</button>
     </div>
     <div class="tabpanel on" id="tab-queue">
@@ -36,6 +37,24 @@
     <div class="tabpanel" id="tab-month">
       <div class="kpi-grid" id="month-kpis"></div>
       <div class="card"><div class="card__head"><h3>Consultations Completed This Month</h3><span class="meta" id="month-meta"></span></div><div class="tscroll" id="seen-month"><div class="skel"></div></div></div>
+    </div>
+    <div class="tabpanel" id="tab-inc">
+      <div class="card" style="padding:16px 22px;margin-bottom:18px"><div class="att-filters" style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end">
+        <div class="field"><label>Month</label><input type="month" id="inc-month"></div>
+        <div class="field"><label>Patients</label><select id="inc-ptype"><option value="">All</option><option>Employee</option><option>Community Member</option></select></div>
+        <div class="field"><label>Type</label><select id="inc-type"><option value="">All</option><option>Accident</option><option>Incident</option><option>Near Miss</option></select></div>
+        <div style="margin-left:auto"><button class="btn btn--primary" id="inc-print">Monthly report (print / PDF)</button></div>
+      </div></div>
+      <div class="kpi-grid" id="inc-kpis"></div>
+      <div class="row-2-eq">
+        <div class="card chart-wrap"><div class="card__head"><h3>By Severity</h3></div><canvas id="inc-sev" height="220"></canvas></div>
+        <div class="card"><div class="card__head"><h3>Main Causes</h3></div><div id="inc-cause"></div></div>
+      </div>
+      <div class="row-2-eq">
+        <div class="card chart-wrap"><div class="card__head"><h3>Events by Day</h3></div><canvas id="inc-day" height="220"></canvas></div>
+        <div class="card"><div class="card__head"><h3>By Department / Farm</h3></div><div id="inc-dept"></div></div>
+      </div>
+      <div class="card"><div class="card__head"><h3>Register</h3><span class="meta" id="inc-meta"></span></div><div class="tscroll" id="inc-table"><div class="skel"></div></div></div>
     </div>
     <div class="tabpanel" id="tab-insights">
       <div class="row-2-eq">

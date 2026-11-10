@@ -9,7 +9,7 @@
         sub: "Patients sent from triage, results back from the lab, and everything you need to treat them",
         tools: `<button class="iconbtn" id="refresh" title="Refresh">${Desk.REFRESH_ICON}</button>`,
     });
-    Desk.tabs((tab) => { if (tab === "insights") loadInsights(); else if (tab === "month") loadMonth(); });
+    Desk.tabs((tab) => { if (tab === "insights") loadInsights(); else if (tab === "month") loadMonth(); else if (tab === "inc") loadIncReport(); });
     $("#refresh").addEventListener("click", () => { loadAll(); toast("Refreshed"); });
 
     const M = await masters();
@@ -94,6 +94,38 @@
             ${d.rows.map((r) => `<tr><td>${esc(dateOf(r.consultation_date).slice(5))} ${timeOf(r.consultation_date)}</td><td><b style="color:var(--ink)">${esc(r.patient_name)}</b><br><span class="printnote">${esc(ageSex(r))}</span></td>
             <td>${typeTag(r.patient_type)}</td><td>${esc(r.diagnoses || "—")}</td><td class="num">${r.sick_leave_days || "—"}</td>
             <td>${r.refer_out ? pill("Referred out", "warn") : pill("Treated", "good")}</td></tr>`).join("")}</table>` : empty("No completed consultations yet this month.");
+    }
+
+    // ---- monthly accidents & incidents (register + report)
+    const incMonth = $("#inc-month"); incMonth.value = new Date().toISOString().slice(0, 7);
+    ["inc-month", "inc-ptype", "inc-type"].forEach((id) => $("#" + id).addEventListener("change", loadIncReport));
+    const incQs = () => ({ month: incMonth.value, patient_type: $("#inc-ptype").value || undefined, report_type: $("#inc-type").value || undefined });
+    $("#inc-print").addEventListener("click", () => { const q = incQs(); window.open("/clinic/incident_report?" + new URLSearchParams(Object.fromEntries(Object.entries(q).filter(([, v]) => v))), "_blank"); });
+    async function loadIncReport() {
+        if (!incMonth.value) return;
+        const d = await call("incident.monthly", incQs()), s = d.summary, pv = d.previous;
+        const trend = (a, b) => (a === b ? "same as " + d.previous_period : (a > b ? "▲ " : "▼ ") + Math.abs(a - b) + " vs " + d.previous_period);
+        $("#inc-meta").textContent = `${d.period} · ${s.total} record${s.total === 1 ? "" : "s"}`;
+        kpis($("#inc-kpis"), [
+            { label: "Accidents / Incidents", value: s.total, cls: s.total ? "warn" : "good", unit: trend(s.total, pv.total) },
+            { label: "Accidents", value: s.accidents, unit: `${s.incidents} incidents · ${s.near_misses} near misses` },
+            { label: "Serious", value: s.serious, cls: s.serious ? "bad" : "good", unit: s.fatal ? `${s.fatal} fatal` : "Severe or fatal" },
+            { label: "Work-related", value: s.work_related, cls: s.work_related ? "bad" : "", unit: "Happened on duty" },
+            { label: "Days Lost", value: s.lost_days, unit: `${s.referred} referred out` },
+            { label: "Open / Statutory Pending", value: `${s.open} <span style="font-size:14px;color:var(--ink-mute)">/ ${s.statutory_pending}</span>`, cls: s.statutory_pending ? "warn" : "", unit: "Reports to close / file" },
+        ]);
+        const SEV = { Minor: "#1a8a3a", Moderate: "#e68a00", Severe: "#c4302b", Fatal: "#7a1410" };
+        chart("inc-sev", { type: "doughnut", data: { labels: d.by_severity.map((r) => r.label), datasets: [{ data: d.by_severity.map((r) => r.count), backgroundColor: d.by_severity.map((r) => SEV[r.label] || "#888") }] }, options: { plugins: { legend: { position: "right" } }, scales: {} } });
+        chart("inc-day", { type: "bar", data: { labels: d.by_day.map((r) => r.day.slice(8)), datasets: [{ label: "Events", data: d.by_day.map((r) => r.count), backgroundColor: "#c4302b", borderRadius: 4, maxBarThickness: 22 }] }, options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { grid: { display: false } } } } });
+        Desk.hbars($("#inc-cause"), d.by_cause.slice(0, 8).map((r) => ({ label: r.label, value: r.count })), { cls: () => "warn" });
+        Desk.hbars($("#inc-dept"), d.by_department.slice(0, 8).map((r) => ({ label: r.label, value: r.count })));
+        const sevPill = { Minor: "good", Moderate: "warn", Severe: "bad", Fatal: "bad" };
+        $("#inc-table").innerHTML = d.rows.length ? `<table class="dtable"><tr><th>Date</th><th>Patient</th><th>Type</th><th>Severity</th><th>Cause / injury</th><th>Outcome</th><th class="num">Days lost</th><th>Status</th></tr>
+            ${d.rows.map((r) => `<tr><td>${esc(dateOf(r.incident_date).slice(5))}${r.incident_time ? " " + esc(String(r.incident_time).slice(0, 5)) : ""}</td>
+            <td><b style="color:var(--ink)">${esc(r.patient_name)}</b><br><span class="printnote">${esc(r.department || r.employer || r.patient_type || "")}${r.work_related ? " · work-related" : ""}</span></td>
+            <td>${esc(r.report_type)}</td><td>${pill(r.severity, sevPill[r.severity] || "info")}</td>
+            <td>${esc([r.cause, r.injury_type, r.body_part].filter(Boolean).join(" · ") || "—")}</td><td>${esc(r.outcome || "—")}</td>
+            <td class="num">${r.lost_days || "—"}</td><td>${pill(r.status, r.status === "Closed" ? "good" : "warn")}${r.doshmis_status === "Pending" ? " " + pill("DOSHS pending", "bad") : ""}</td></tr>`).join("")}</table>` : empty("No accidents or incidents recorded in " + d.period + ".");
     }
 
     async function loadInsights() {
@@ -198,6 +230,7 @@
                         <button class="subtab" data-p="mgmt">Management</button>
                         <button class="subtab" data-p="rx">Prescription <span class="dotc" id="c-rx" style="display:none"></span></button>
                         <button class="subtab" data-p="ref">Referral &amp; Follow-up</button>
+                        <button class="subtab" data-p="inc">Accident / Incident <span class="dotc" id="c-inc" style="display:none"></span></button>
                     </div>
                     <fieldset id="fs" style="border:0;padding:0;margin:0;min-width:0" ${locked ? "disabled" : ""}>
                     <div class="subpanel on" id="sp-history">
@@ -268,6 +301,7 @@
                             ${field("sick_leave_days", "Sick-off days recommended", { type: "number", value: c.sick_leave_days || "", attrs: 'min="0"' })}
                             ${field("light_duty_days", "Light duty days", { type: "number", value: c.light_duty_days || "", attrs: 'min="0"' })}</div>` : ""}
                     </div>
+                    <div class="subpanel" id="sp-inc"><div id="inc-box"></div></div>
                     </fieldset>
                 </div>
                 <div class="ws__rail">
@@ -332,7 +366,7 @@
         $("[data-f=refer_out]", root).addEventListener("change", (e) => ($("#ref-box", root).style.display = e.target.checked ? "block" : "none"));
         $("[data-f=follow_up_required]", root).addEventListener("change", (e) => ($("#fu-box", root).style.display = e.target.checked ? "block" : "none"));
 
-        renderLab(); renderDx(); renderRx(); renderLabResults();
+        renderLab(); renderDx(); renderRx(); renderLabResults(); loadIncidents(locked, isEmp);
         Desk.procedurePicker($("#proc-box", root), state.proc, { locked, onChange: () => (dirty = true) });
         renderTimeline(ws.history);
         $("#tl-all", root).addEventListener("click", async () => renderTimeline(await call("consultation.patient_timeline", { patient: ws.patient.name })));
@@ -482,7 +516,7 @@
         const el = $("#timeline");
         el.innerHTML = rows.length ? rows.map((h, i) => `<div class="tl" data-tl="${i}">
             <div class="tl__date">${esc(dateOf(h.consultation_date))} · ${esc(h.doctor_name || "")}</div>
-            <div class="tl__dx">${h.diagnoses.length ? h.diagnoses.map((d) => esc(d.diagnosis)).join(", ") : h.impression ? `<i>Impression:</i> ${esc(h.impression)}` : "<i>No diagnosis</i>"}</div>
+            <div class="tl__dx">${(h.incidents || []).length ? `<span class="tag tag--Emergency">${esc(h.incidents[0].report_type)}</span> ` : ""}${h.diagnoses.length ? h.diagnoses.map((d) => esc(d.diagnosis)).join(", ") : h.impression ? `<i>Impression:</i> ${esc(h.impression)}` : "<i>No diagnosis</i>"}</div>
             <div class="printnote">${esc(h.presenting_complaint || "")}</div>
             <div class="tl__detail">
                 ${h.management_plan ? `<div><b>Management:</b> ${esc(h.management_plan)}</div>` : ""}
@@ -491,8 +525,96 @@
                 ${h.refer_out ? `<div><b>Referred to:</b> ${esc(h.referral_facility || "")}</div>` : ""}
                 ${h.sick_leave_days ? `<div><b>Sick-off:</b> ${h.sick_leave_days} days</div>` : ""}
                 ${h.work_related ? `<div><b>Work-related</b></div>` : ""}
+                ${(h.incidents || []).map((x) => `<div style="color:var(--bad)"><b>${esc(x.report_type)}:</b> ${esc(x.severity)}${x.injury_type ? " · " + esc(x.injury_type) : ""}</div>`).join("")}
             </div></div>`).join("") : empty("First visit — no earlier consultations.");
         $$(".tl", el).forEach((t) => t.addEventListener("click", () => t.classList.toggle("open")));
+    }
+
+    // ---- accident / incident
+    const CAUSES = ["", "Fall", "Machinery / equipment", "Cut / sharps / needle-stick", "Chemical exposure", "Burn / scald", "Road traffic", "Struck by object", "Animal / insect bite", "Heat / dehydration", "Assault", "Other"];
+    const OUTCOMES = ["", "Treated and discharged", "Sick-off", "Light duty", "Referred out", "Admitted", "Fatal"];
+    const ifield = (...a) => field(...a).replace(/data-f=/g, "data-i=");
+    const iread = (root) => { const o = {}; $$("[data-i]", root).forEach((el) => (o[el.dataset.i] = el.type === "checkbox" ? (el.checked ? 1 : 0) : el.value)); return o; };
+    let incidents = [], incLocked = false, incEmp = false;
+
+    async function loadIncidents(locked, isEmp) {
+        incLocked = locked; incEmp = isEmp;
+        incidents = await call("incident.for_visit", { visit: ws.visit.name }, { quiet: true });
+        renderIncidents();
+    }
+    function renderIncidents(editing) {
+        const box = $("#inc-box"); if (!box) return;
+        const n = incidents.length; $("#c-inc").style.display = n ? "" : "none"; $("#c-inc").textContent = n;
+        const sevCls = { Minor: "good", Moderate: "warn", Severe: "bad", Fatal: "bad" };
+        box.innerHTML = `
+            <div class="liveinfo" style="background:var(--info-bg);color:var(--info)">Record any accident, incident or near miss linked to this visit. It is saved straight away, appears in the patient's history and feeds the monthly Accidents &amp; Incidents report.</div>
+            ${incidents.map((x) => `<div class="linebox"><div class="linebox__row">
+                <div><b style="color:var(--ink)">${esc(x.report_type)}</b> ${pill(x.severity, sevCls[x.severity] || "info")} ${x.work_related ? pill("Work-related", "bad") : ""}
+                    <span class="printnote">${esc(dateOf(x.incident_date))}${x.incident_time ? " " + esc(String(x.incident_time).slice(0, 5)) : ""}${x.location ? " · " + esc(x.location) : ""}</span></div>
+                <div>${incLocked ? "" : `<button class="btn btn--sm" data-inc-edit="${esc(x.name)}">Edit</button> <button class="iconx" data-inc-del="${esc(x.name)}" title="Delete">×</button>`}</div></div>
+                <div class="printnote" style="margin-top:6px">${esc(x.name)} · ${[x.cause, x.injury_type, x.body_part].filter(Boolean).map(esc).join(" · ") || "—"}${x.outcome ? " · " + esc(x.outcome) : ""}</div>
+                <div style="margin-top:6px">${esc(x.description || "")}</div></div>`).join("") || (editing ? "" : empty("No accident or incident recorded for this visit."))}
+            <div id="inc-form">${editing ? incForm(editing) : incLocked ? "" : '<button class="btn btn--signal" id="inc-new">+ Record accident / incident</button>'}</div>`;
+        $("#inc-new")?.addEventListener("click", () => renderIncidents({}));
+        $$("[data-inc-edit]", box).forEach((b) => b.addEventListener("click", () => renderIncidents(incidents.find((x) => x.name === b.dataset.incEdit))));
+        $$("[data-inc-del]", box).forEach((b) => b.addEventListener("click", async () => {
+            if (!confirm("Delete this accident / incident record?")) return;
+            await call("incident.remove", { name: b.dataset.incDel }); toast("Record deleted"); await loadIncidents(incLocked, incEmp);
+        }));
+        if (editing) {
+            const f = $("#inc-form");
+            Desk.facilityField($("[data-i=referral_destination]", f));
+            $("#inc-cancel").addEventListener("click", () => renderIncidents());
+            $("#inc-save").addEventListener("click", async () => {
+                const data = iread(f);
+                if (!data.description.trim()) return toast("Describe what happened", "warn");
+                if (!data.incident_date) return toast("Enter the date of the event", "warn");
+                try {
+                    await call("incident.save", { visit: ws.visit.name, data, name: editing.name || undefined });
+                    toast("Accident / incident recorded");
+                    if (data.work_related) { const w = $("[data-f=work_related]"); if (w) w.checked = true; }
+                    await loadIncidents(incLocked, incEmp);
+                } catch (e) { /* shown by call() */ }
+            });
+        }
+    }
+    function incForm(x) {
+        const today = new Date().toISOString().slice(0, 10);
+        const emp = incEmp;
+        return `<div class="card" style="padding:16px 18px;margin-top:12px"><div class="card__head"><h3>${x.name ? "Edit " + esc(x.name) : "New accident / incident"}</h3></div>
+            <div class="grid-2">
+                ${ifield("report_type", "Type", { type: "select", options: ["Accident", "Incident", "Near Miss"], value: x.report_type || "Accident" })}
+                ${ifield("severity", "Severity", { type: "select", options: ["Minor", "Moderate", "Severe", "Fatal"], value: x.severity || "Minor" })}
+                ${ifield("incident_date", "Date of event", { type: "date", value: x.incident_date || today, attrs: `max="${today}"` })}
+                ${ifield("incident_time", "Time of event", { type: "time", value: x.incident_time ? String(x.incident_time).slice(0, 5) : "" })}
+                ${ifield("location", "Where it happened", { value: x.location, placeholder: "Farm section, packhouse, road, home…" })}
+                ${ifield("cause", "Mechanism / cause", { type: "select", options: CAUSES.map((c) => ({ value: c, label: c || "Select…" })), value: x.cause })}
+                ${ifield("injury_type", "Type of injury", { value: x.injury_type, placeholder: "Laceration, fracture, sprain, burn…" })}
+                ${ifield("body_part", "Body part affected", { value: x.body_part })}
+            </div>
+            ${ifield("description", "What happened", { type: "textarea", rows: 3, value: x.description, required: true })}
+            <div class="grid-2">
+                ${ifield("witness", "Witness(es)", { value: x.witness })}
+                ${ifield("reported_to", "Reported to (supervisor)", { value: x.reported_to })}
+            </div>
+            ${emp || x.work_related ? ifield("work_related", "Work-related (happened on duty)", { type: "checkbox", value: x.work_related == null ? 1 : x.work_related }) : ifield("work_related", "Work-related (happened on duty)", { type: "checkbox", value: x.work_related })}
+            <div class="subhead">Treatment and outcome</div>
+            ${ifield("stabilization_steps", "First aid / treatment given", { type: "textarea", rows: 2, value: x.stabilization_steps })}
+            <div class="grid-2">
+                ${ifield("outcome", "Outcome", { type: "select", options: OUTCOMES.map((c) => ({ value: c, label: c || "Select…" })), value: x.outcome })}
+                ${ifield("lost_days", "Days lost (sick-off)", { type: "number", value: x.lost_days || "", attrs: 'min="0"' })}
+                ${ifield("referral_destination", "Referred to", { value: x.referral_destination, placeholder: "Type to search or add" })}
+                ${ifield("accompanied_by_co", "Accompanied by an escort / clinician", { type: "checkbox", value: x.accompanied_by_co })}
+            </div>
+            <div class="subhead">Review (can be completed later)</div>
+            ${ifield("root_cause", "Root cause", { type: "textarea", rows: 2, value: x.root_cause })}
+            ${ifield("corrective_actions", "Corrective / preventive actions", { type: "textarea", rows: 2, value: x.corrective_actions })}
+            <div class="grid-2">
+                ${ifield("doshmis_status", "DOSHS / statutory report", { type: "select", options: ["Not Required", "Pending", "In Progress", "Filed"], value: x.doshmis_status || "Not Required" })}
+                ${ifield("insurance_status", "Insurance / compensation", { type: "select", options: ["Not Applicable", "Ongoing", "Settled"], value: x.insurance_status || "Not Applicable" })}
+                ${ifield("status", "Report status", { type: "select", options: ["Open", "Under Review", "Closed"], value: x.status || "Open" })}
+            </div>
+            <div style="display:flex;gap:10px;margin-top:12px"><button class="btn btn--primary" id="inc-save">Save record</button><button class="btn" id="inc-cancel">Cancel</button></div></div>`;
     }
 
     // ---- actions

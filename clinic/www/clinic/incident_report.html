@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Accidents &amp; Incidents Report</title>
+<link rel="icon" type="image/svg+xml" href="/assets/clinic/images/northlake-mark.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/clinic/css/clinic_report.css?v={{ asset_version }}">
+</head>
+<body>
+<div class="toolbar no-print">
+  <a class="tb-back" href="javascript:history.back()">&larr; Back</a>
+  <span class="tb-note">Use <b>Print</b> and choose <b>Save as PDF</b> to keep a digital copy.</span>
+  <button class="tb-print" id="print" disabled>Print report</button>
+</div>
+<div id="warn" class="warnbar no-print" style="display:none"></div>
+<div id="msg" class="msg no-print">Loading&hellip;</div>
+<div id="sheet-wrap"></div>
+<script>window.CLINIC = { csrf: {{ csrf_token | tojson }}, user: {{ frappe.session.user | tojson }} };</script>
+<script src="/assets/clinic/js/clinic_desk.js?v={{ asset_version }}"></script>
+<script src="/assets/clinic/js/incident_report.js?v={{ asset_version }}"></script>
+</body>
+</html>

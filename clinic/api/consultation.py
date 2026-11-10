@@ -261,6 +261,10 @@ def patient_history(patient, exclude_visit=None, limit=12):
 			filters={"visit": row.visit, "status": ["!=", "Cancelled"]},
 			fields=["test_type", "interpretation", "status"],
 		)
+		row.incidents = frappe.get_all(
+			"Clinic Incident", filters={"visit": row.visit},
+			fields=["name", "report_type", "severity", "injury_type", "incident_date"],
+		)
 	return consultations
 
 

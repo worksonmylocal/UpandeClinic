@@ -1,0 +1,353 @@
+{
+	"actions": [],
+	"creation": "2026-11-10 09:00:00.000000",
+	"doctype": "DocType",
+	"engine": "InnoDB",
+	"autoname": "INC-.YYYY.-.#####",
+	"naming_rule": "Expression (old style)",
+	"title_field": "patient_name",
+	"search_fields": "patient_name,report_type,severity,incident_date",
+	"field_order": [
+		"sec1",
+		"report_type",
+		"incident_date",
+		"incident_time",
+		"location",
+		"col1",
+		"severity",
+		"status",
+		"work_related",
+		"sec2",
+		"patient",
+		"patient_name",
+		"patient_type",
+		"col2",
+		"department",
+		"employer",
+		"visit",
+		"consultation",
+		"doctor",
+		"sec3",
+		"cause",
+		"injury_type",
+		"body_part",
+		"col3",
+		"witness",
+		"reported_to",
+		"description",
+		"sec4",
+		"stabilization_steps",
+		"outcome",
+		"lost_days",
+		"col4",
+		"referral_destination",
+		"accompanied_by_co",
+		"sec5",
+		"root_cause",
+		"corrective_actions",
+		"col5",
+		"doshmis_status",
+		"insurance_status"
+	],
+	"fields": [
+		{
+			"fieldname": "sec1",
+			"fieldtype": "Section Break",
+			"label": "Incident"
+		},
+		{
+			"fieldname": "report_type",
+			"fieldtype": "Select",
+			"label": "Type",
+			"options": "Accident\nIncident\nNear Miss",
+			"default": "Accident",
+			"reqd": 1,
+			"in_list_view": 1,
+			"in_standard_filter": 1
+		},
+		{
+			"fieldname": "incident_date",
+			"fieldtype": "Date",
+			"label": "Date of event",
+			"reqd": 1,
+			"in_list_view": 1,
+			"in_standard_filter": 1
+		},
+		{
+			"fieldname": "incident_time",
+			"fieldtype": "Time",
+			"label": "Time of event"
+		},
+		{
+			"fieldname": "location",
+			"fieldtype": "Data",
+			"label": "Where it happened",
+			"description": "Farm section, packhouse, road, home\u2026"
+		},
+		{
+			"fieldname": "col1",
+			"fieldtype": "Column Break"
+		},
+		{
+			"fieldname": "severity",
+			"fieldtype": "Select",
+			"label": "Severity",
+			"options": "Minor\nModerate\nSevere\nFatal",
+			"default": "Minor",
+			"reqd": 1,
+			"in_list_view": 1,
+			"in_standard_filter": 1
+		},
+		{
+			"fieldname": "status",
+			"fieldtype": "Select",
+			"label": "Status",
+			"options": "Open\nUnder Review\nClosed",
+			"default": "Open",
+			"in_list_view": 1,
+			"in_standard_filter": 1
+		},
+		{
+			"fieldname": "work_related",
+			"fieldtype": "Check",
+			"label": "Work-related (on duty)",
+			"in_standard_filter": 1
+		},
+		{
+			"fieldname": "sec2",
+			"fieldtype": "Section Break",
+			"label": "Patient"
+		},
+		{
+			"fieldname": "patient",
+			"fieldtype": "Link",
+			"label": "Patient",
+			"options": "Clinic Patient",
+			"reqd": 1,
+			"in_list_view": 1,
+			"in_standard_filter": 1
+		},
+		{
+			"fieldname": "patient_name",
+			"fieldtype": "Data",
+			"label": "Patient name",
+			"read_only": 1,
+			"in_list_view": 1
+		},
+		{
+			"fieldname": "patient_type",
+			"fieldtype": "Data",
+			"label": "Patient type",
+			"read_only": 1
+		},
+		{
+			"fieldname": "col2",
+			"fieldtype": "Column Break"
+		},
+		{
+			"fieldname": "department",
+			"fieldtype": "Data",
+			"label": "Department / section",
+			"read_only": 1,
+			"in_standard_filter": 1
+		},
+		{
+			"fieldname": "employer",
+			"fieldtype": "Data",
+			"label": "Employer / farm",
+			"read_only": 1,
+			"in_standard_filter": 1
+		},
+		{
+			"fieldname": "visit",
+			"fieldtype": "Link",
+			"label": "Visit",
+			"options": "Clinic Visit",
+			"read_only": 1
+		},
+		{
+			"fieldname": "consultation",
+			"fieldtype": "Link",
+			"label": "Consultation",
+			"options": "Clinic Consultation",
+			"read_only": 1
+		},
+		{
+			"fieldname": "doctor",
+			"fieldtype": "Link",
+			"label": "Recorded by",
+			"options": "User",
+			"read_only": 1
+		},
+		{
+			"fieldname": "sec3",
+			"fieldtype": "Section Break",
+			"label": "What happened"
+		},
+		{
+			"fieldname": "cause",
+			"fieldtype": "Select",
+			"label": "Mechanism / cause",
+			"options": "\nFall\nMachinery / equipment\nCut / sharps / needle-stick\nChemical exposure\nBurn / scald\nRoad traffic\nStruck by object\nAnimal / insect bite\nHeat / dehydration\nAssault\nOther"
+		},
+		{
+			"fieldname": "injury_type",
+			"fieldtype": "Data",
+			"label": "Type of injury",
+			"description": "e.g. laceration, fracture, sprain, burn, poisoning"
+		},
+		{
+			"fieldname": "body_part",
+			"fieldtype": "Data",
+			"label": "Body part affected"
+		},
+		{
+			"fieldname": "col3",
+			"fieldtype": "Column Break"
+		},
+		{
+			"fieldname": "witness",
+			"fieldtype": "Data",
+			"label": "Witness(es)"
+		},
+		{
+			"fieldname": "reported_to",
+			"fieldtype": "Data",
+			"label": "Reported to (supervisor)"
+		},
+		{
+			"fieldname": "description",
+			"fieldtype": "Small Text",
+			"label": "Description of the event",
+			"reqd": 1
+		},
+		{
+			"fieldname": "sec4",
+			"fieldtype": "Section Break",
+			"label": "Treatment and outcome"
+		},
+		{
+			"fieldname": "stabilization_steps",
+			"fieldtype": "Small Text",
+			"label": "First aid / treatment given"
+		},
+		{
+			"fieldname": "outcome",
+			"fieldtype": "Select",
+			"label": "Outcome",
+			"options": "\nTreated and discharged\nSick-off\nLight duty\nReferred out\nAdmitted\nFatal"
+		},
+		{
+			"fieldname": "lost_days",
+			"fieldtype": "Int",
+			"label": "Days lost (sick-off)",
+			"default": "0"
+		},
+		{
+			"fieldname": "col4",
+			"fieldtype": "Column Break"
+		},
+		{
+			"fieldname": "referral_destination",
+			"fieldtype": "Link",
+			"label": "Referred to",
+			"options": "Clinic Facility"
+		},
+		{
+			"fieldname": "accompanied_by_co",
+			"fieldtype": "Check",
+			"label": "Accompanied by a clinician / escort"
+		},
+		{
+			"fieldname": "sec5",
+			"fieldtype": "Section Break",
+			"label": "Review and statutory reporting"
+		},
+		{
+			"fieldname": "root_cause",
+			"fieldtype": "Small Text",
+			"label": "Root cause"
+		},
+		{
+			"fieldname": "corrective_actions",
+			"fieldtype": "Small Text",
+			"label": "Corrective / preventive actions"
+		},
+		{
+			"fieldname": "col5",
+			"fieldtype": "Column Break"
+		},
+		{
+			"fieldname": "doshmis_status",
+			"fieldtype": "Select",
+			"label": "DOSHS / statutory report",
+			"options": "Not Required\nPending\nIn Progress\nFiled",
+			"default": "Not Required"
+		},
+		{
+			"fieldname": "insurance_status",
+			"fieldtype": "Select",
+			"label": "Insurance / compensation",
+			"options": "Not Applicable\nOngoing\nSettled",
+			"default": "Not Applicable"
+		}
+	],
+	"links": [],
+	"modified": "2026-11-10 09:00:00.000000",
+	"modified_by": "Administrator",
+	"module": "Clinic",
+	"name": "Clinic Incident",
+	"owner": "Administrator",
+	"track_changes": 1,
+	"sort_field": "creation",
+	"sort_order": "DESC",
+	"states": [],
+	"permissions": [
+		{
+			"role": "System Manager",
+			"read": 1,
+			"report": 1,
+			"export": 1,
+			"print": 1,
+			"email": 1,
+			"share": 1,
+			"write": 1,
+			"create": 1,
+			"delete": 1
+		},
+		{
+			"role": "Clinic Manager",
+			"read": 1,
+			"report": 1,
+			"export": 1,
+			"print": 1,
+			"email": 1,
+			"share": 1,
+			"write": 1,
+			"create": 1,
+			"delete": 1
+		},
+		{
+			"role": "Clinic Doctor",
+			"read": 1,
+			"report": 1,
+			"export": 1,
+			"print": 1,
+			"email": 1,
+			"share": 1,
+			"write": 1,
+			"create": 1
+		},
+		{
+			"role": "Clinic Nurse",
+			"read": 1,
+			"report": 1,
+			"export": 1,
+			"print": 1,
+			"email": 1,
+			"share": 1,
+			"write": 1,
+			"create": 1
+		}
+	]
+}
