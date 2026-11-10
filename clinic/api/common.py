@@ -2,7 +2,7 @@
 
 import frappe
 from frappe import _
-from frappe.utils import cint, flt, get_datetime, now_datetime, nowdate
+from frappe.utils import add_days, cint, flt, get_datetime, getdate, now_datetime, nowdate
 
 from clinic.utils import age_text
 
@@ -79,6 +79,16 @@ def allowed_pages():
 	if roles & set(ADMIN_ROLES) or frappe.session.user == "Administrator":
 		return list(PAGE_ROLES)
 	return [page for page, page_roles in PAGE_ROLES.items() if roles & set(page_roles)]
+
+
+def period_range(period):
+	"""(first day, last day) for the Today / This week / This month switch on the Insights tabs."""
+	today = getdate(nowdate())
+	if period == "week":
+		return add_days(today, -today.weekday()), today
+	if period == "month":
+		return today.replace(day=1), today
+	return today, today
 
 
 def minutes_since(value):

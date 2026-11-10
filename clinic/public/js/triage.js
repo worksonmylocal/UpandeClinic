@@ -11,6 +11,7 @@
                 <button class="iconbtn" id="refresh" title="Refresh">${Desk.REFRESH_ICON}</button>`,
     });
     Desk.tabs((tab) => tab === "insights" && loadInsights());
+    const period = Desk.periodToggle($("#period"), () => loadInsights(), "day");
     $("#refresh").addEventListener("click", () => { loadAll(); toast("Refreshed"); });
     $("#new-visit").addEventListener("click", startCheckIn);
 
@@ -87,20 +88,51 @@
 
     // ------------------------------------------------------------ insights
     async function loadInsights() {
-        const d = await call("triage.insights");
-        const hours = Array.from({ length: 24 }, (_, h) => h).filter((h) => h >= 5 && h <= 21);
-        const byHour = Object.fromEntries(d.by_hour.map((r) => [r.hour, r.visits]));
-        chart("hour-chart", { type: "bar", data: { labels: hours.map((h) => `${h}:00`), datasets: [{ label: "Arrivals", data: hours.map((h) => byHour[h] || 0), backgroundColor: COLORS.ink, borderRadius: 6, maxBarThickness: 26 }] }, options: { plugins: { legend: { display: false } } } });
-        chart("day-chart", { type: "bar", data: { labels: d.by_day.map((r) => r.day.slice(5)), datasets: Desk.stackedDatasets(d.by_day) }, options: { ...Desk.stackedOptions, plugins: { legend: { display: false } } } });
-        const pc = { Routine: COLORS.good, Urgent: COLORS.warn, Emergency: COLORS.bad };
-        chart("priority-chart", { type: "doughnut", data: { labels: d.priority.map((r) => r.label), datasets: [{ data: d.priority.map((r) => r.value), backgroundColor: d.priority.map((r) => pc[r.label]), borderWidth: 0 }] }, options: { plugins: { legend: { position: "right" } } } });
+        const d = await call("triage.insights", { period: period.value });
+        const WORD = { day: "today", week: "this week", month: "this month" }[period.value];
+        $("#range-meta").textContent = d.range.from === d.range.to ? Desk.dateOf(d.range.from) : `${d.range.from} → ${d.range.to}`;
+
+        // Door to triage: green within the target, orange up to double it, red beyond
+        const w = d.door_to_triage, LV = Desk.LEVEL;
+        $("#door-meta").textContent = w.measured ? `${w.measured} patient${w.measured === 1 ? "" : "s"} ${WORD}` : "";
+        kpis($("#door-kpis"), [
+            { label: "Average", value: Desk.duration(w.average), cls: !w.measured ? "" : w.average <= w.target ? "good" : w.average <= w.target * 2 ? "warn" : "bad", unit: `Target ${w.target} min` },
+            { label: "Longest", value: Desk.duration(w.longest), cls: w.longest > w.target * 2 ? "bad" : "" },
+            { label: "Within target", value: `${w.within_target}%`, cls: !w.measured ? "" : w.within_target >= 80 ? "good" : w.within_target >= 50 ? "warn" : "bad", unit: w.measured ? `timed from check-in` : "" },
+        ]);
+        const bmax = Math.max(...w.buckets.map((b) => b.value), 1);
+        $("#door-bars").innerHTML = w.measured ? w.buckets.map((b) => `<div class="hb"><div class="hb__name">${esc(b.label)}</div>
+            <div class="hb__lane"><div class="hb__est"></div><div class="hb__act ${b.level}" style="width:${b.value / bmax * 100}%"></div></div>
+            <div class="hb__pct">${b.value}</div></div>`).join("") + `<div class="lvl-legend"><span><i style="background:${LV.good}"></i>On target</span><span><i style="background:${LV.warn}"></i>Slow</span><span><i style="background:${LV.bad}"></i>Too long</span></div>`
+            : empty("No patients had vitals taken in this period.");
+
+        // Triage priority ring
+        const pc = { Routine: LV.good, Urgent: LV.warn, Emergency: LV.bad };
+        const ptotal = d.priority.reduce((a, r) => a + r.value, 0);
+        $("#priority-meta").textContent = ptotal ? `${ptotal} triaged` : "";
+        $("#priority-mid").innerHTML = `<b>${ptotal}</b><span>Triaged</span>`;
+        $("#priority-chips").innerHTML = ["Routine", "Urgent", "Emergency"].map((k) => {
+            const n = (d.priority.find((r) => r.label === k) || {}).value || 0;
+            return `<span class="pchip" style="--c:${pc[k]}"><i></i>${k} <b>${n}</b></span>`;
+        }).join("");
+        chart("priority-chart", { type: "doughnut", data: { labels: d.priority.map((r) => r.label), datasets: [{ data: ptotal ? d.priority.map((r) => r.value) : [1], backgroundColor: ptotal ? d.priority.map((r) => pc[r.label]) : ["rgba(10,10,10,0.06)"], borderWidth: 4, borderColor: "#fff", hoverOffset: 8, borderRadius: 8 }] }, options: { cutout: "70%", plugins: { legend: { display: false }, tooltip: { enabled: !!ptotal } } } });
+
+        // Screening flags: green under 10% of patients, orange to 25%, red beyond
         const f = d.flags, total = f.total || 0;
-        $("#flag-meta").textContent = `${total} patients triaged`;
+        $("#flag-meta").textContent = `${total} patient${total === 1 ? "" : "s"} triaged ${WORD}`;
+        const share = (v) => (total ? v * 100 / total : 0);
         hbars($("#flags"), [
             { label: "Fever", value: f.fever }, { label: "High BP", value: f.high_bp },
             { label: "Low oxygen", value: f.low_spo2 }, { label: "Fast pulse", value: f.tachycardia },
             { label: "Abnormal glucose", value: f.glucose }, { label: "Obese (BMI ≥ 30)", value: f.obese },
-        ], { format: (v) => `${v} <span style="color:var(--ink-mute)">(${total ? Math.round(v * 100 / total) : 0}%)</span>`, cls: (r) => (r.value ? "" : "") });
+        ], { format: (v) => `${v} <span style="color:var(--ink-mute)">(${Math.round(share(v))}%)</span>`, cls: (r) => (share(r.value) > 25 ? "bad" : share(r.value) >= 10 ? "warn" : "good") });
+
+        // Arrivals by hour: smooth, colourful curves
+        const h = d.by_hour, hours = Array.from({ length: 17 }, (_, i) => i + 5), at = (a) => hours.map((x) => a[x] || 0);
+        const series = [];
+        series.push({ label: "Checked in", values: at(h.registered), colors: ["#e07a3a", "#d6558b"] });
+        series.push({ label: "Vitals taken", values: at(h.triaged), colors: ["#8a4fd0", "#2f9e5b"] });
+        Desk.smoothLine("hour-chart", hours.map((x) => `${String(x).padStart(2, "0")}:00`), series);
     }
 
     // ------------------------------------------------------------ check-in

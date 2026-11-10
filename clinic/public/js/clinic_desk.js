@@ -701,7 +701,110 @@ window.Desk = (function () {
         draw();
     }
 
+
+    // small line icons for tiles
+    const IC = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+    const ICO = {
+        clock: IC('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+        flask: IC('<path d="M9 3h6M10 3v6L4.5 19a2 2 0 0 0 1.8 3h11.4a2 2 0 0 0 1.8-3L14 9V3"/>'),
+        pulse: IC('<path d="M3 12h4l2-6 4 12 2-6h6"/>'),
+        check: IC('<circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/>'),
+        hourglass: IC('<path d="M6 3h12M6 21h12M7 3c0 5 5 6 5 9s-5 4-5 9M17 3c0 5-5 6-5 9s5 4 5 9"/>'),
+        out: IC('<path d="M14 4h6v6M20 4l-9 9M10 6H5a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5"/>'),
+        users: IC('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-6 6.5-6s6.5 2.5 6.5 6M16 4.5a3.5 3.5 0 0 1 0 7M18.5 14c2 .8 3 2.6 3 5"/>'),
+        pill: IC('<rect x="3" y="9" width="18" height="6" rx="3" transform="rotate(-35 12 12)"/>'),
+        box: IC('<path d="M21 8l-9-5-9 5v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/>'),
+        list: IC('<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>'),
+        doc: IC('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h6"/>'),
+        alert: IC('<path d="M12 3l10 18H2zM12 10v5M12 18h.01"/>'),
+        bed: IC('<path d="M3 18v-8M3 14h18v4M21 14v-2a3 3 0 0 0-3-3h-7v5"/><circle cx="7" cy="11" r="1.5"/>'),
+        heart: IC('<path d="M12 20s-8-5-8-11a4.5 4.5 0 0 1 8-2.5A4.5 4.5 0 0 1 20 9c0 6-8 11-8 11z"/>'),
+        cal: IC('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'),
+        stetho: IC('<path d="M6 3v6a4 4 0 0 0 8 0V3M10 13v2a4 4 0 0 0 8 0v-2"/><circle cx="18" cy="11" r="2"/>'),
+    };
+    // ---------------------------------------------------------------- insights helpers
+    const PALETTE = ["#2c6bb3", "#e07a3a", "#228883", "#b9770e", "#8a4fd0", "#c4302b", "#2f9e5b", "#d6558b"];
+    const LEVEL = { good: "#1a8a3a", warn: "#e68a00", bad: "#c4302b" };
+
+    // Day / Week / Month switch: calls onChange(period) and returns { value }.
+    function periodToggle(el, onChange, initial = "day") {
+        const state = { value: initial };
+        el.innerHTML = `<div class="seg-toggle">${[["day", "Today"], ["week", "This week"], ["month", "This month"]]
+            .map(([k, l]) => `<button type="button" data-period="${k}" class="${k === initial ? "on" : ""}">${l}</button>`).join("")}</div>`;
+        $$("[data-period]", el).forEach((b) => b.addEventListener("click", () => {
+            state.value = b.dataset.period;
+            $$("[data-period]", el).forEach((x) => x.classList.toggle("on", x === b));
+            onChange(state.value);
+        }));
+        return state;
+    }
+
+    // Smooth curves whose stroke runs through the series colours left to right
+    function smoothLine(id, labels, series) {
+        const grad = (colors) => (c) => {
+            const a = c.chart.chartArea;
+            if (!a) return colors[0];
+            const g = c.chart.ctx.createLinearGradient(a.left, 0, a.right, 0);
+            colors.forEach((col, i) => g.addColorStop(colors.length === 1 ? 0 : i / (colors.length - 1), col));
+            return g;
+        };
+        const fill = (color) => (c) => {
+            const a = c.chart.chartArea;
+            if (!a) return "transparent";
+            const g = c.chart.ctx.createLinearGradient(0, a.top, 0, a.bottom);
+            g.addColorStop(0, color + "55"); g.addColorStop(1, color + "00");
+            return g;
+        };
+        chart(id, {
+            type: "line",
+            data: { labels, datasets: series.map((s) => ({
+                label: s.label, data: s.values, tension: 0.45, borderWidth: 3, pointRadius: 0, pointHoverRadius: 6, fill: true,
+                borderColor: grad(s.colors), backgroundColor: fill(s.colors[0]), pointBackgroundColor: s.colors[0],
+            })) },
+            options: { maintainAspectRatio: false, interaction: { mode: "index", intersect: false }, plugins: { legend: { display: series.length > 1, labels: { usePointStyle: true, boxWidth: 8 } } } },
+        });
+    }
+
+    function countUp(el, to, ms = 700) {
+        const target = Number(to) || 0, t0 = performance.now(), decimals = String(to).includes(".") ? 1 : 0;
+        const tick = (t) => {
+            const k = Math.min((t - t0) / ms, 1), e = 1 - Math.pow(1 - k, 3);
+            el.textContent = (target * e).toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+            if (k < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+    }
+
+    // Lively tiles: coloured accent, icon, number that counts up, soft lift on hover
+    function livelyTiles(el, items) {
+        el.innerHTML = items.map((k, i) => `<div class="live" ${k.onClick ? 'role="button" tabindex="0"' : ""} data-i="${i}" style="--c:${k.color || PALETTE[i % PALETTE.length]};animation-delay:${i * 60}ms">
+            <div class="live__ico">${k.icon || ""}</div>
+            <div class="live__num" ${typeof k.value === "number" || /^\d+(\.\d+)?$/.test(String(k.value)) ? `data-to="${esc(k.value)}"` : ""}>${typeof k.value === "number" || /^\d+(\.\d+)?$/.test(String(k.value)) ? "0" : k.value}</div>
+            <div class="live__label">${esc(k.label)}</div>
+            ${k.unit ? `<div class="live__unit">${k.unit}</div>` : ""}${k.onClick ? `<span class="live__hint">${esc(k.hint || "Open")} →</span>` : ""}</div>`).join("");
+        $$(".live__num[data-to]", el).forEach((n) => countUp(n, n.dataset.to));
+        $$(".live[data-i]", el).forEach((t) => {
+            const k = items[Number(t.dataset.i)];
+            if (!k.onClick) return;
+            t.addEventListener("click", k.onClick);
+            t.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); k.onClick(); } });
+        });
+    }
+
+    // Ranked list with gradient bars (top diagnoses, most dispensed drugs)
+    function ranked(el, rows, { format = num } = {}) {
+        if (!rows.length) { el.innerHTML = empty("Nothing recorded in this period."); return; }
+        const max = Math.max(...rows.map((r) => Number(r.value) || 0), 1);
+        el.innerHTML = `<div class="rank">${rows.map((r, i) => `<div class="rank__row" style="--c:${PALETTE[i % PALETTE.length]}">
+            <div class="rank__n">${i + 1}</div>
+            <div><div class="rank__name"><span title="${esc(r.label)}">${esc(r.label)}</span>${r.sub ? `<span style="font-weight:400;color:var(--ink-mute)">${r.sub}</span>` : ""}</div>
+            <div class="rank__lane"><div class="rank__fill" data-w="${(Number(r.value) || 0) / max * 100}"></div></div></div>
+            <div class="rank__val">${format(r.value, r)}</div></div>`).join("")}</div>`;
+        requestAnimationFrame(() => $$(".rank__fill", el).forEach((f) => (f.style.width = f.dataset.w + "%")));
+    }
+
     return { call, esc, $, $$, num, initials, timeOf, dateOf, duration, wait, waitClass, typeTag, pill, ageSex, empty, split, money,
         toast, shell, tabs, poll, kpis, hbars, chart, stackedDatasets, stackedOptions, COLORS, modal, field, read, suggest,
-        banner, masters, facilityField, procedurePicker, pickPatient, REFRESH_ICON, cfg };
+        banner, masters, facilityField, procedurePicker, pickPatient, REFRESH_ICON, cfg,
+        PALETTE, LEVEL, ICO, periodToggle, smoothLine, countUp, livelyTiles, ranked };
 })();
