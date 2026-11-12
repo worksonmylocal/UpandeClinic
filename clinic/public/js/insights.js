@@ -38,7 +38,7 @@
             afterRender(d) {
                 const k = d.kpis, P = Desk.PALETTE, I = Desk.ICO;
                 Desk.livelyTiles($("#ov-kpis"), [
-                    { label: "Consultations", value: k.consultations, color: P[0], icon: I.stetho, unit: `${num(k.patients)} patients seen` },
+                    { label: "Consultations", value: k.consultations, color: P[0], icon: I.stetho, unit: `${num(k.patients)} patients seen${k.medicals ? " · " + num(k.medicals) + " employment medicals" : ""}` },
                     { label: "Clinic Visits", value: k.visits, color: P[2], icon: I.users, unit: "Checked in at the front desk" },
                     { label: "Sick-Off", value: k.sick_offs, color: P[5], icon: I.cal, unit: `${num(k.sick_days)} sick days given` },
                     { label: "Lab Tests", value: k.lab_tests, color: P[4], icon: I.flask, unit: `${num(k.lab_pending)} awaiting results` },

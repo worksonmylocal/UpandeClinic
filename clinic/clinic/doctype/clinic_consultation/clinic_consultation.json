@@ -14,6 +14,7 @@
 		"age_years",
 		"department",
 		"consultation_date",
+		"consultation_type",
 		"ended_on",
 		"doctor",
 		"status",
@@ -70,7 +71,14 @@
 		"sick_leave_days",
 		"column_18",
 		"light_duty_days",
-		"procedures"
+		"procedures",
+		"tab_medical",
+		"job_position",
+		"fitness_status",
+		"certificate_valid_until",
+		"fitness_restrictions",
+		"medical_tests",
+		"medical_remarks"
 	],
 	"fields": [
 		{
@@ -146,6 +154,16 @@
 			"label": "Consultation Date",
 			"default": "Now",
 			"reqd": 1
+		},
+		{
+			"fieldname": "consultation_type",
+			"fieldtype": "Select",
+			"label": "Consultation Type",
+			"options": "Consultation\nPre-Employment Medical\nPost-Employment Medical",
+			"default": "Consultation",
+			"read_only": 1,
+			"in_list_view": 1,
+			"in_standard_filter": 1
 		},
 		{
 			"fieldname": "ended_on",
@@ -475,10 +493,49 @@
 			"fieldtype": "Table",
 			"label": "Procedures Done",
 			"options": "Clinic Procedure Done"
+		},
+		{
+			"fieldname": "tab_medical",
+			"fieldtype": "Tab Break",
+			"label": "Medical Examination",
+			"depends_on": "eval:doc.consultation_type!='Consultation'"
+		},
+		{
+			"fieldname": "job_position",
+			"fieldtype": "Data",
+			"label": "Position / Job Applied For"
+		},
+		{
+			"fieldname": "fitness_status",
+			"fieldtype": "Select",
+			"label": "Fitness Outcome",
+			"options": "\nFit\nFit with Restrictions\nTemporarily Unfit\nUnfit\nPending Investigations",
+			"in_standard_filter": 1
+		},
+		{
+			"fieldname": "certificate_valid_until",
+			"fieldtype": "Date",
+			"label": "Certificate Valid Until"
+		},
+		{
+			"fieldname": "fitness_restrictions",
+			"fieldtype": "Small Text",
+			"label": "Restrictions / Conditions"
+		},
+		{
+			"fieldname": "medical_tests",
+			"fieldtype": "Table",
+			"label": "Examinations Done",
+			"options": "Clinic Medical Exam Item"
+		},
+		{
+			"fieldname": "medical_remarks",
+			"fieldtype": "Text",
+			"label": "Examiner's Remarks"
 		}
 	],
 	"links": [],
-	"modified": "2026-09-30 12:53:25.795598",
+	"modified": "2026-11-12 12:00:00.000000",
 	"modified_by": "Administrator",
 	"module": "Clinic",
 	"name": "Clinic Consultation",

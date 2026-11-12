@@ -55,7 +55,8 @@
     function queueCard(r, button, extra = "") {
         return `<div class="qcard"><div class="qcard__stripe ${esc(r.priority || "")}"></div>
             <div><div class="qcard__name">${esc(r.patient_name)} ${typeTag(r.patient_type)}
-                ${r.priority ? `<span class="tag tag--${esc(r.priority)}">${esc(r.priority)}</span>` : ""}</div>
+                ${r.priority ? `<span class="tag tag--${esc(r.priority)}">${esc(r.priority)}</span>` : ""}
+                ${r.visit_purpose && !["Consultation", "Lab Only"].includes(r.visit_purpose) ? pill(r.visit_purpose, "warn") : ""}</div>
             <div class="qcard__meta">${esc(r.visit)} · ${esc(ageSex(r))}${r.department ? " · " + esc(r.department) : ""}</div>
             ${r.chief_complaint ? `<div class="qcard__note">${esc(r.chief_complaint)}</div>` : ""}
             ${r.alerts ? `<div class="qcard__note alert">⚠ ${esc(r.alerts.replace(/\n/g, "; "))}</div>` : ""}${extra}</div>
@@ -104,7 +105,10 @@
         });
     }
 
-    const outcome = (r) => (r.refer_out ? pill("Referred out", "warn") : pill("Treated", "good"));
+    const FIT_CLS = { Fit: "good", "Fit with Restrictions": "warn", "Temporarily Unfit": "warn", Unfit: "bad", "Pending Investigations": "info" };
+    const outcome = (r) => (r.consultation_type && r.consultation_type !== "Consultation"
+        ? pill(`${r.consultation_type.split("-")[0]}: ${r.fitness_status || "—"}`, FIT_CLS[r.fitness_status] || "mute")
+        : r.refer_out ? pill("Referred out", "warn") : pill("Treated", "good"));
 
     // "Download file": the doctor chooses between this encounter and the patient's entire file
     const fileCell = (r) => `<td class="num"><button class="btn btn--sm" data-file="${esc(r.consultation)}" data-patient="${esc(r.patient_name)}" data-when="${esc(dateOf(r.consultation_date))}">Download file</button></td>`;
@@ -153,7 +157,7 @@
         ]);
         $("#seen-rows").innerHTML = d.rows.length ? `<table class="dtable"><tr><th>${one ? "Time" : "Date"}</th><th>Patient</th><th>Type</th><th>Diagnosis</th><th class="num">Sick-off</th><th>Outcome</th><th></th></tr>
             ${d.rows.map((r) => `<tr><td>${one ? timeOf(r.consultation_date) : `${esc(dateOf(r.consultation_date).slice(5))} ${timeOf(r.consultation_date)}`}</td><td><b style="color:var(--ink)">${esc(r.patient_name)}</b><br><span class="printnote">${esc(ageSex(r))}</span></td>
-            <td>${typeTag(r.patient_type)}</td><td>${esc(r.diagnoses || "—")}</td><td class="num">${r.sick_leave_days || "—"}</td>
+            <td>${typeTag(r.patient_type)}</td><td>${esc(r.diagnoses || (r.consultation_type !== "Consultation" ? r.consultation_type : "—"))}</td><td class="num">${r.sick_leave_days || "—"}</td>
             <td>${outcome(r)}</td>${fileCell(r)}</tr>`).join("")}</table>` : empty("No patients seen in this period.");
         bindFiles($("#seen-rows"));
     }
@@ -270,6 +274,9 @@
         return !value ? "" : `<div class="vital ${level || ""}"><small>${label}</small><b>${esc(value)}</b><em>${unit}</em></div>`;
     }
 
+    const FITNESS = ["", "Fit", "Fit with Restrictions", "Temporarily Unfit", "Unfit", "Pending Investigations"];
+    const isMedical = () => !!ws.consultation.consultation_type && ws.consultation.consultation_type !== "Consultation";
+
     function renderWorkspace(data) {
         ws = data;
         const c = ws.consultation, p = ws.patient, t = ws.triage, v = ws.visit;
@@ -280,7 +287,9 @@
             dx: (c.diagnoses || []).map((r) => ({ ...r })),
             rx: (c.prescriptions || []).map((r) => ({ ...r })),
             proc: (c.procedures || []).map((r) => ({ procedure: r.procedure, qty: r.qty })),
+            med: (c.medical_tests || []).map((r) => ({ ...r })),
         };
+        const medical = isMedical();
         dirty = false;
         $("#view-queue").style.display = "none";
         $("#pagehead").style.display = "none";
@@ -302,7 +311,7 @@
 
         root.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:18px;gap:16px;flex-wrap:wrap">
-                <div><div class="pagehead__eyebrow">Consultation · ${esc(c.name)}</div>
+                <div><div class="pagehead__eyebrow">${esc(c.consultation_type || "Consultation")} · ${esc(c.name)}</div>
                 <h1 class="pagehead__title" style="font-size:30px">${esc(p.full_name)}</h1></div>
                 <div style="display:flex;gap:10px;align-items:center">${ws.bill ? `<span class="tag tag--dest" title="Charges so far for this visit">Bill so far: ${money(ws.bill.total)}</span>` : ""}${pill(v.status, "info")}
                     <button class="btn" id="back">← Back to queue</button></div>
@@ -326,6 +335,7 @@
                         <button class="subtab" data-p="dx">Diagnosis <span class="dotc" id="c-dx" style="display:none"></span></button>
                         <button class="subtab" data-p="mgmt">Management</button>
                         <button class="subtab" data-p="rx">Prescription <span class="dotc" id="c-rx" style="display:none"></span></button>
+                        ${medical ? '<button class="subtab" data-p="med">Medical Examination</button>' : ""}
                         <button class="subtab" data-p="ref">Referral &amp; Follow-up</button>
                         <button class="subtab" data-p="inc">Accident / Incident <span class="dotc" id="c-inc" style="display:none"></span></button>
                     </div>
@@ -375,6 +385,19 @@
                         <div id="rx-rows"></div>
                         <div id="proc-box"></div>
                     </div>
+                    ${medical ? `<div class="subpanel" id="sp-med">
+                        <div class="subhead" style="margin-top:0">${esc(c.consultation_type)}</div>
+                        <div class="grid-3">
+                            ${field("job_position", c.consultation_type.startsWith("Pre") ? "Position applied for" : "Position held", { value: c.job_position })}
+                            ${field("fitness_status", "Fitness outcome", { type: "select", options: FITNESS, value: c.fitness_status, required: true })}
+                            ${field("certificate_valid_until", "Valid until", { type: "date", value: c.certificate_valid_until })}
+                        </div>
+                        ${field("fitness_restrictions", "Restrictions / conditions", { type: "textarea", rows: 2, value: c.fitness_restrictions, placeholder: "e.g. No heavy lifting, no pesticide handling" })}
+                        <div class="subhead">Examinations done</div>
+                        <div id="med-rows"></div>
+                        ${locked ? "" : '<div style="margin-top:8px"><button class="btn btn--sm" id="med-add" type="button">+ Add examination</button></div>'}
+                        ${field("medical_remarks", "Examiner's remarks", { type: "textarea", rows: 3, value: c.medical_remarks })}
+                    </div>` : ""}
                     <div class="subpanel" id="sp-ref">
                         ${field("refer_out", "Refer to another facility", { type: "checkbox", value: c.refer_out })}
                         <div id="ref-box" style="display:${c.refer_out ? "block" : "none"}">
@@ -464,6 +487,10 @@
         $("[data-f=follow_up_required]", root).addEventListener("change", (e) => ($("#fu-box", root).style.display = e.target.checked ? "block" : "none"));
 
         renderLab(); renderDx(); renderRx(); renderLabResults(); loadIncidents(locked, isEmp);
+        if (isMedical()) {
+            renderMed();
+            const add = $("#med-add", root); if (add) add.addEventListener("click", () => { state.med.push({ test: "", result: "", findings: "" }); dirty = true; renderMed(); });
+        }
         Desk.procedurePicker($("#proc-box", root), state.proc, { locked, onChange: () => (dirty = true) });
         renderTimeline(ws.history);
         $("#tl-all", root).addEventListener("click", async () => renderTimeline(await call("consultation.patient_timeline", { patient: ws.patient.name })));
@@ -622,9 +649,23 @@
                 ${h.refer_out ? `<div><b>Referred to:</b> ${esc(h.referral_facility || "")}</div>` : ""}
                 ${h.sick_leave_days ? `<div><b>Sick-off:</b> ${h.sick_leave_days} days</div>` : ""}
                 ${h.work_related ? `<div><b>Work-related</b></div>` : ""}
+                ${h.consultation_type && h.consultation_type !== "Consultation" ? `<div><b>${esc(h.consultation_type)}:</b> ${esc(h.fitness_status || "—")}</div>` : ""}
                 ${(h.incidents || []).map((x) => `<div style="color:var(--bad)"><b>${esc(x.report_type)}:</b> ${esc(x.severity)}${x.injury_type ? " · " + esc(x.injury_type) : ""}</div>`).join("")}
             </div></div>`).join("") : empty("First visit — no earlier consultations.");
         $$(".tl", el).forEach((t) => t.addEventListener("click", () => t.classList.toggle("open")));
+    }
+
+    // ---- employment medical examinations
+    function renderMed() {
+        const el = $("#med-rows");
+        if (!el) return;
+        el.innerHTML = state.med.length ? `<table class="rtable"><tr><th>Examination</th><th style="width:150px">Result</th><th>Findings</th><th style="width:34px"></th></tr>
+            ${state.med.map((r, i) => `<tr><td><input class="input" data-med="${i}" data-k="test" value="${esc(r.test || "")}"></td>
+                <td><select class="input" data-med="${i}" data-k="result">${["", "Normal", "Abnormal", "Not Done"].map((o) => `<option ${o === (r.result || "") ? "selected" : ""}>${o}</option>`).join("")}</select></td>
+                <td><input class="input" data-med="${i}" data-k="findings" value="${esc(r.findings || "")}"></td>
+                <td><button class="iconx" data-med-del="${i}" title="Remove" type="button">×</button></td></tr>`).join("")}</table>` : empty("No examinations listed.");
+        $$("[data-med]", el).forEach((inp) => inp.addEventListener("input", () => { state.med[inp.dataset.med][inp.dataset.k] = inp.value; dirty = true; }));
+        $$("[data-med-del]", el).forEach((b) => b.addEventListener("click", () => { state.med.splice(Number(b.dataset.medDel), 1); dirty = true; renderMed(); }));
     }
 
     // ---- accident / incident
@@ -724,14 +765,16 @@
 
     function refreshActions() {
         const box = $("#actions");
-        if (locked()) { box.innerHTML = ""; return; }
+        const printMed = isMedical() ? '<button class="btn" id="a-print-med" type="button">Print medical report</button> ' : "";
+        const bindPrint = () => $("#a-print-med")?.addEventListener("click", async () => { if (!locked()) await save(false); window.open(`/clinic/certificate?consultation=${encodeURIComponent(ws.consultation.name)}`, "_blank"); });
+        if (locked()) { box.innerHTML = printMed; bindPrint(); return; }
         const unsent = state.lab.some((r) => !r.lab_test);
         const hasRx = state.rx.length > 0;
-        box.innerHTML = `
+        box.innerHTML = `${printMed}
             ${unsent ? '<button class="btn btn--signal" id="a-lab">Send to Lab →</button>' : ""}
             ${hasRx ? `<button class="btn ${unsent ? "" : "btn--primary"}" id="a-rx">Send to Pharmacy →</button>`
                 : `<button class="btn ${unsent ? "" : "btn--primary"}" id="a-done">Complete consultation ✓</button>`}`;
-        $("#a-lab")?.addEventListener("click", () => act("send_to_lab", "Sent to the lab"));
+        bindPrint(); $("#a-lab")?.addEventListener("click", () => act("send_to_lab", "Sent to the lab"));
         $("#a-rx")?.addEventListener("click", () => {
             if (state.lab.some((r) => !r.lab_test)) return toast("Send the new lab requests first, or remove them.", "warn");
             if (needTb()) return;
@@ -750,6 +793,7 @@
         data.lab_requests = state.lab.map(({ test_type, urgency, clinical_notes, lab_test }) => ({ test_type, urgency, clinical_notes, lab_test }));
         data.diagnoses = state.dx.map(({ diagnosis, diagnosis_type, notes }) => ({ diagnosis, diagnosis_type, notes }));
         data.procedures = state.proc.map(({ procedure, qty }) => ({ procedure, qty }));
+        if (isMedical()) data.medical_tests = state.med.map(({ test, result, findings }) => ({ test, result, findings }));
         data.prescriptions = state.rx.map(({ drug, dose, route, frequency, duration_days, quantity, instructions }) => ({ drug, dose, route, frequency, duration_days, quantity, instructions }));
         return data;
     }
@@ -762,6 +806,11 @@
     }
 
     async function act(action, message) {
+        if (isMedical() && !read($("#ws-form")).fitness_status) {
+            toast("Record the fitness outcome on the Medical Examination tab first", "warn");
+            const tab = $(".subtab[data-p=med]"); if (tab) tab.click();
+            return;
+        }
         const btns = $$(".actionbar button"); btns.forEach((b) => (b.disabled = true));
         try {
             await call("consultation.action", { name: ws.consultation.name, action, data: collect() });

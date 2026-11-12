@@ -1,0 +1,44 @@
+{
+	"actions": [],
+	"creation": "2026-10-12 12:00:00.000000",
+	"doctype": "DocType",
+	"engine": "InnoDB",
+	"field_order": [
+		"test",
+		"result",
+		"findings"
+	],
+	"fields": [
+		{
+			"fieldname": "test",
+			"fieldtype": "Data",
+			"label": "Test / Examination",
+			"reqd": 1,
+			"in_list_view": 1
+		},
+		{
+			"fieldname": "result",
+			"fieldtype": "Select",
+			"label": "Result",
+			"options": "\nNormal\nAbnormal\nNot Done",
+			"in_list_view": 1
+		},
+		{
+			"fieldname": "findings",
+			"fieldtype": "Data",
+			"label": "Findings",
+			"in_list_view": 1
+		}
+	],
+	"links": [],
+	"modified": "2026-11-12 12:00:00.000000",
+	"modified_by": "Administrator",
+	"module": "Clinic",
+	"name": "Clinic Medical Exam Item",
+	"owner": "Administrator",
+	"states": [],
+	"sort_field": "creation",
+	"sort_order": "DESC",
+	"istable": 1,
+	"editable_grid": 1
+}

@@ -21,8 +21,11 @@ def _pricing():
 	return frappe.get_single("Clinic Pricing")
 
 
-def consultation_price():
-	return flt(_pricing().consultation_price)
+def consultation_price(consultation_type=None):
+	"""The doctor's fee. Employment medicals have their own price; when it is left at 0 the normal fee applies."""
+	pricing = _pricing()
+	special = {"Pre-Employment Medical": pricing.get("pre_employment_medical"), "Post-Employment Medical": pricing.get("post_employment_medical")}.get(consultation_type)
+	return flt(special) or flt(pricing.consultation_price)
 
 
 def lab_price(test_type):
@@ -117,7 +120,9 @@ def desired_lines(visit):
 	lines = {}
 	consultation = frappe.db.get_value("Clinic Visit", visit, "consultation")
 	if consultation:
-		lines[("Clinic Consultation", consultation)] = ("Consultation", _("Consultation fee"), 1, consultation_price())
+		kind = frappe.db.get_value("Clinic Consultation", consultation, "consultation_type") or "Consultation"
+		label = _("Consultation fee") if kind == "Consultation" else _(kind)
+		lines[("Clinic Consultation", consultation)] = ("Consultation", label, 1, consultation_price(kind))
 	attendance_name = frappe.db.get_value("Clinic Visit", visit, "attendance")
 	procedures = procedure_prices()
 	if consultation:

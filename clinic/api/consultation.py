@@ -25,6 +25,7 @@ TEXT_FIELDS = [
 	"general_examination", "systemic_examination", "investigations_notes", "management_plan",
 	"procedures_done", "patient_advice", "referral_facility", "referral_urgency", "referral_reason",
 	"referral_notes", "follow_up_date", "follow_up_reason",
+	"job_position", "fitness_status", "certificate_valid_until", "fitness_restrictions", "medical_remarks",
 ]
 CHECK_FIELDS = ["work_related", "refer_out", "follow_up_required"]
 INT_FIELDS = ["sick_leave_days", "light_duty_days"]
@@ -37,7 +38,7 @@ def dashboard():
 
 	queue_sql = """
 		SELECT v.name AS visit, v.patient, v.patient_name, v.patient_type, v.sex, v.age_years, v.department,
-			v.visit_source, v.status, v.consultation,
+			v.visit_source, v.visit_purpose, v.status, v.consultation,
 			t.triage_priority AS priority, t.chief_complaint, t.alerts, t.triage_datetime AS since
 		FROM `tabClinic Visit` v LEFT JOIN `tabClinic Triage` t ON t.name = v.triage
 		WHERE v.status = %s AND IFNULL(v.service_point, 'Consultation') = 'Consultation'
@@ -150,6 +151,7 @@ def insights(period="day"):
 		SELECT COUNT(*) AS consultations,
 			COUNT(DISTINCT patient) AS patients,
 			IFNULL(SUM(refer_out), 0) AS referrals,
+			IFNULL(SUM(consultation_type != 'Consultation'), 0) AS medicals,
 			IFNULL(SUM(work_related), 0) AS work_related,
 			IFNULL(SUM(follow_up_required), 0) AS follow_ups,
 			IFNULL(SUM(sick_leave_days), 0) AS sick_days,
@@ -221,7 +223,7 @@ def seen(from_date=None, to_date=None, q=None):
 	rows = frappe.db.sql(
 		"""
 		SELECT c.name AS consultation, c.visit, c.patient_name, c.patient_type, c.sex, c.age_years,
-			c.consultation_date, c.refer_out, c.sick_leave_days, c.work_related,
+			c.consultation_date, c.consultation_type, c.fitness_status, c.refer_out, c.sick_leave_days, c.work_related,
 			(SELECT GROUP_CONCAT(d.diagnosis SEPARATOR ', ') FROM `tabClinic Consultation Diagnosis` d
 				WHERE d.parent = c.name) AS diagnoses
 		FROM `tabClinic Consultation` c
@@ -308,7 +310,7 @@ def patient_history(patient, exclude_visit=None, limit=12):
 	consultations = frappe.get_all(
 		"Clinic Consultation",
 		filters=filters,
-		fields=["name", "visit", "consultation_date", "doctor", "presenting_complaint", "impression", "management_plan",
+		fields=["name", "visit", "consultation_date", "consultation_type", "fitness_status", "doctor", "presenting_complaint", "impression", "management_plan",
 				"refer_out", "referral_facility", "sick_leave_days", "work_related", "status"],
 		order_by="consultation_date desc",
 		limit=limit,
@@ -362,6 +364,10 @@ def _apply(doc, data):
 		if field in data:
 			doc.set(field, to_number(data[field], integer=True) or 0)
 
+	if "medical_tests" in data:
+		doc.set("medical_tests", [
+			pick(row, ["test", "result", "findings"]) for row in data["medical_tests"] if row.get("test")
+		])
 	if "diagnoses" in data:
 		doc.set("diagnoses", [
 			pick(row, ["diagnosis", "diagnosis_type", "notes"]) for row in data["diagnoses"] if row.get("diagnosis")

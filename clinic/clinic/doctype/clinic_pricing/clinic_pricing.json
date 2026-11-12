@@ -5,6 +5,8 @@
 	"engine": "InnoDB",
 	"field_order": [
 		"consultation_price",
+		"pre_employment_medical",
+		"post_employment_medical",
 		"section_visit_fees",
 		"mch_first_visit",
 		"mch_revisit",
@@ -26,6 +28,18 @@
 			"default": "350",
 			"reqd": 1,
 			"description": "Charged once per visit when the patient sees the doctor"
+		},
+		{
+			"fieldname": "pre_employment_medical",
+			"fieldtype": "Currency",
+			"label": "Pre-Employment Medical",
+			"description": "Charged instead of the consultation price. 0 = use the consultation price"
+		},
+		{
+			"fieldname": "post_employment_medical",
+			"fieldtype": "Currency",
+			"label": "Post-Employment Medical",
+			"description": "Charged instead of the consultation price. 0 = use the consultation price"
 		},
 		{
 			"fieldname": "section_visit_fees",
@@ -94,7 +108,7 @@
 		}
 	],
 	"links": [],
-	"modified": "2026-09-30 15:49:23.181683",
+	"modified": "2026-11-12 12:00:00.000000",
 	"modified_by": "Administrator",
 	"module": "Clinic",
 	"name": "Clinic Pricing",

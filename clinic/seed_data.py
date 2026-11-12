@@ -303,3 +303,20 @@ VACCINE_SCHEDULE = [
     ("18 Months", "MR 2 (Measles-Rubella)", 547, 0),
     ("18 Months", "Vitamin A (200,000 IU)", 547, 0),
 ]
+
+
+# The standard checklist for pre- and post-employment medical examinations
+MEDICAL_EXAM_TESTS = [
+	"General appearance",
+	"Vision (acuity)",
+	"Colour vision",
+	"Hearing",
+	"Chest / respiratory",
+	"Cardiovascular",
+	"Abdomen",
+	"Musculoskeletal / back",
+	"Skin",
+	"Neurological",
+	"Hernia",
+	"Urinalysis (dipstick)",
+]

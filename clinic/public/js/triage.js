@@ -56,6 +56,7 @@
         $("#waiting").innerHTML = rows.length ? rows.map((r, i) => `
             <div class="qcard"><div class="qcard__stripe"></div>
                 <div><div class="qcard__name">${esc(r.patient_name)} ${typeTag(r.patient_type)}
+                    ${r.visit_purpose && !["Consultation", "Lab Only"].includes(r.visit_purpose) ? pill(r.visit_purpose, "warn") : ""}
                     ${r.visit_source !== "Walk-in" ? pill(r.visit_source, "info") : ""}</div>
                 <div class="qcard__meta">${esc(r.visit)} · ${esc(ageSex(r))}${r.department ? " · " + esc(r.department) : ""} · arrived ${timeOf(r.visit_date)}</div>
                 ${r.reception_notes ? `<div class="qcard__note">${esc(r.reception_notes)}</div>` : ""}</div>
@@ -156,6 +157,7 @@
             sub: "Record how the patient arrived",
             body: `${banner(p)}
                 <div class="grid-2">
+                    ${field("visit_purpose", "Reason for visit", { type: "select", options: ["Consultation", "Pre-Employment Medical", "Post-Employment Medical"] })}
                     ${field("visit_source", "Arrived as", { type: "select", options: ["Walk-in", "Appointment", "Follow-up", "Referral In"] })}
                 </div>
                 <div id="ref-box" style="display:none">
@@ -216,7 +218,7 @@
         const canRoute = ["Waiting Triage", "Waiting Consultation", "Waiting Clinic"].includes(ctx.visit.status);
         const h = modal({
             title: ex.name ? "Update vitals" : "Take vitals",
-            sub: `${esc(ctx.visit.name)} · arrived ${timeOf(ctx.visit.visit_date)}${ctx.visit.visit_source !== "Walk-in" ? " · " + esc(ctx.visit.visit_source) : ""}`,
+            sub: `${esc(ctx.visit.name)} · arrived ${timeOf(ctx.visit.visit_date)}${ctx.visit.visit_purpose && !["Consultation", "Lab Only"].includes(ctx.visit.visit_purpose) ? " · " + esc(ctx.visit.visit_purpose) : ""}${ctx.visit.visit_source !== "Walk-in" ? " · " + esc(ctx.visit.visit_source) : ""}`,
             size: "wide",
             body: `${banner(ctx.patient)}
                 ${ctx.visit.reception_notes ? `<div class="liveinfo ok" style="background:var(--info-bg);color:var(--info)">Reception: ${esc(ctx.visit.reception_notes)}</div>` : ""}

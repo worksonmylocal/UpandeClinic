@@ -1,7 +1,7 @@
 frappe.ui.form.on("Clinic Consultation", {
 	setup(frm) {
 		frm.set_query("visit", () => ({
-			filters: { status: ["not in", ["Completed", "Cancelled"]], visit_purpose: "Consultation" },
+			filters: { status: ["not in", ["Completed", "Cancelled"]], visit_purpose: ["!=", "Lab Only"] },
 		}));
 		frm.set_query("test_type", "lab_requests", () => ({ filters: { enabled: 1 } }));
 	},

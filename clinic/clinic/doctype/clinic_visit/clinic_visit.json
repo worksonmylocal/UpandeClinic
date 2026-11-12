@@ -137,11 +137,11 @@
 			"fieldname": "visit_purpose",
 			"fieldtype": "Select",
 			"label": "Visit Purpose",
-			"options": "Consultation\nLab Only",
+			"options": "Consultation\nPre-Employment Medical\nPost-Employment Medical\nLab Only",
 			"default": "Consultation",
 			"reqd": 1,
 			"in_standard_filter": 1,
-			"description": "Lab Only skips triage and consultation, e.g. a patient referred in just for tests."
+			"description": "Lab Only skips triage and consultation, e.g. a patient referred in just for tests. The medical types open the Medical Examination tab for the doctor."
 		},
 		{
 			"fieldname": "visit_source",
@@ -253,7 +253,7 @@
 		}
 	],
 	"links": [],
-	"modified": "2026-09-30 16:23:08.483480",
+	"modified": "2026-11-12 12:00:00.000000",
 	"modified_by": "Administrator",
 	"module": "Clinic",
 	"name": "Clinic Visit",

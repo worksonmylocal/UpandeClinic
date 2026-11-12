@@ -30,7 +30,7 @@ def dashboard():
 		filters={"status": "Waiting Triage"},
 		fields=[
 			"name as visit", "patient", "patient_name", "patient_type", "sex", "age_years", "department",
-			"visit_date", "visit_source", "reception_notes", "referring_facility",
+			"visit_date", "visit_source", "visit_purpose", "reception_notes", "referring_facility",
 		],
 		order_by="visit_date asc",
 	)
@@ -182,7 +182,7 @@ def get_triage_context(visit):
 		"Clinic Visit",
 		visit,
 		["name", "patient", "patient_name", "patient_type", "status", "visit_source", "visit_date",
-		 "reception_notes", "triage", "referring_facility", "referral_reason", "service_point"],
+		 "reception_notes", "triage", "referring_facility", "referral_reason", "service_point", "visit_purpose"],
 		as_dict=True,
 	)
 	previous = frappe.get_all(

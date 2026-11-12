@@ -41,13 +41,15 @@
         const off = [e.sick_leave_days ? `Sick leave: ${e.sick_leave_days} day(s)` : "", e.light_duty_days ? `Light duty: ${e.light_duty_days} day(s)` : "", e.work_related ? "Work-related" : ""].filter(Boolean);
         const inc = e.incidents.length ? e.incidents.map((x) => `<div><b>${esc(x.report_type)} · ${esc(x.severity)}</b> on ${esc(dayOf(x.incident_date))} ${esc(x.name)}<div class="note" style="margin:0">${esc([x.cause, x.injury_type, x.body_part, x.outcome].filter(Boolean).join(" · "))}</div>${esc(x.description || "")}</div>`).join("") : "";
         return `<div class="enc" ${i ? 'style="break-before:page;padding-top:2mm"' : ""}>
-            ${full ? `<div class="titlebar" style="margin-top:0"><h1 style="font-size:19px">${esc(dayOf(e.date))} · ${esc(e.type || "")}</h1><div class="conf">${esc(e.name)}</div></div>` : ""}
+            ${full ? `<div class="titlebar" style="margin-top:0"><h1 style="font-size:19px">${esc(dayOf(e.date))} · ${esc(e.consultation_type && e.consultation_type !== "Consultation" ? e.consultation_type : (e.type || ""))}</h1><div class="conf">${esc(e.name)}</div></div>` : ""}
             <div style="margin-bottom:10px">${kv([["Seen on", dt(e.date)], ["Seen by", e.doctor], ["Visit", e.visit]].filter((x) => x[1]))}</div>
             ${sec("Vital signs", vitals)}
             ${sec("Presenting complaint", text(e.complaint) + (e.hpi ? note("History: " + esc(e.hpi)) : ""))}
             ${sec("Review of systems", kv(e.systems))}
             ${sec("Medical history", kv(e.history))}
             ${sec("Examination", kv(e.exam))}
+            ${e.medical ? sec(e.consultation_type + " findings", kv([["Position", e.medical.job_position]].filter((x) => x[1])) + (e.medical.tests.filter((x) => x.result || x.findings).length ? `<table class="tbl"><thead><tr><th style="width:34%">Examination</th><th style="width:16%">Result</th><th>Findings</th></tr></thead><tbody>${e.medical.tests.filter((x) => x.result || x.findings).map((x) => `<tr class="${x.result === "Abnormal" ? "abn" : ""}"><td>${esc(x.test)}</td><td>${esc(x.result || "")}</td><td>${esc(x.findings || "")}</td></tr>`).join("")}</tbody></table>` : "")
+                + (e.medical.remarks ? note("Remarks: " + esc(e.medical.remarks)) : "") + (e.medical.fitness_status ? note(`<b>Fitness outcome: ${esc(e.medical.fitness_status)}</b>${e.medical.restrictions ? " — " + esc(e.medical.restrictions) : ""}${e.medical.valid_until ? " · valid until " + esc(dayOf(e.medical.valid_until)) : ""}`) : "")) : ""}
             ${sec("Diagnosis", e.diagnoses.length || e.impression ? (e.diagnoses.length ? `<ul style="margin:0;padding-left:18px">${e.diagnoses.map((x) => `<li><b>${esc(x.diagnosis)}</b>${x.type ? ` <span class="note" style="margin:0">(${esc(x.type)})</span>` : ""}${x.notes ? ` — ${esc(x.notes)}` : ""}</li>`).join("")}</ul>` : "") + (e.impression ? note("Impression: " + esc(e.impression)) : "") : "")}
             ${sec("Laboratory", labs)}
             ${sec("Plan and treatment", text(e.plan) + (e.procedures ? note("Procedures: " + esc(e.procedures)) : "") + procs + rx)}

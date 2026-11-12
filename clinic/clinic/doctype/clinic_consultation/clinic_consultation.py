@@ -6,6 +6,9 @@ from frappe.utils import cint, getdate, nowdate
 from clinic.clinic.doctype.clinic_visit.clinic_visit import CLOSED_STATUSES, set_visit_status
 from clinic import billing
 from clinic.encounter import check_tb_test_sent, request_tb_test
+from clinic.seed_data import MEDICAL_EXAM_TESTS
+
+MEDICAL_TYPES = ("Pre-Employment Medical", "Post-Employment Medical")
 
 TB_SCREENING = {
 	1: "1 - Presumed TB",
@@ -27,6 +30,7 @@ class ClinicConsultation(Document):
 
 	def validate(self):
 		self.validate_visit()
+		self.set_from_visit()
 		self.set_from_triage()
 		self.validate_referral_and_follow_up()
 		self.validate_employee_fields()
@@ -48,6 +52,15 @@ class ClinicConsultation(Document):
 		existing = frappe.db.exists("Clinic Consultation", {"visit": self.visit})
 		if existing:
 			frappe.throw(_("Consultation {0} already exists for this visit").format(existing))
+
+	def set_from_visit(self):
+		"""Pre- and post-employment medicals open with the standard examination checklist."""
+		self.consultation_type = frappe.db.get_value("Clinic Visit", self.visit, "visit_purpose") or "Consultation"
+		if self.consultation_type not in ("Consultation",) + MEDICAL_TYPES:
+			self.consultation_type = "Consultation"
+		if self.is_new() and self.consultation_type in MEDICAL_TYPES and not self.medical_tests:
+			for test in MEDICAL_EXAM_TESTS:
+				self.append("medical_tests", {"test": test})
 
 	def set_from_triage(self):
 		self.triage = frappe.db.get_value("Clinic Visit", self.visit, "triage")
@@ -100,6 +113,10 @@ class ClinicConsultation(Document):
 			self.sick_leave_days = self.light_duty_days = 0
 			self.work_related = 0
 			self.occupational_history = None
+		if self.consultation_type not in MEDICAL_TYPES:
+			self.fitness_status = self.job_position = self.fitness_restrictions = None
+			self.certificate_valid_until = self.medical_remarks = None
+			self.medical_tests = []
 
 	def validate_prescriptions(self):
 		for row in self.prescriptions:
@@ -187,7 +204,10 @@ class ClinicConsultation(Document):
 		if not self.tb_screening:
 			frappe.throw(_("Record the TB screening (1-4) before closing the consultation"))
 		check_tb_test_sent(self)
-		if not self.diagnoses and not (self.impression or "").strip():
+		if self.consultation_type in MEDICAL_TYPES:
+			if not self.fitness_status:
+				frappe.throw(_("Record the fitness outcome on the Medical Examination tab before closing"))
+		elif not self.diagnoses and not (self.impression or "").strip():
 			frappe.throw(_("Add a diagnosis, or write your impression, before closing the consultation"))
 		pending = frappe.db.count(
 			"Clinic Lab Test", {"visit": self.visit, "status": ["in", PENDING_LAB_STATUSES]}

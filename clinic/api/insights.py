@@ -69,7 +69,7 @@ def _consultations(s, fields):
 
 
 def _overview(s):
-	cons = _consultations(s, ["name", "consultation_date", "sick_leave_days", "patient", "work_related", "refer_out"])
+	cons = _consultations(s, ["name", "consultation_date", "sick_leave_days", "patient", "work_related", "refer_out", "consultation_type"])
 	sick = [c for c in cons if (c.sick_leave_days or 0) > 0]
 	visit_filters = {"visit_date": ["between", _between(s)], "status": ["!=", "Cancelled"]}
 	if s.dept:
@@ -98,6 +98,7 @@ def _overview(s):
 			"lab_tests": sum(r.n for r in lab), "lab_pending": sum(r.n for r in lab if r.status != "Resulted"),
 			"incidents": len(incidents), "accidents": sum(1 for i in incidents if i.report_type == "Accident"),
 			"referred": sum(1 for c in cons if c.refer_out), "work_related": sum(1 for c in cons if c.work_related),
+			"medicals": sum(1 for c in cons if c.consultation_type != "Consultation"),
 		},
 		"top_cases": [{"condition": r.name, "cases": r.cases, "share": _pct(r.cases, cases)} for r in diag],
 		"by_month": {

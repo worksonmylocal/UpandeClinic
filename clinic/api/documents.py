@@ -248,6 +248,46 @@ def patient_referral(visit):
 
 
 @frappe.whitelist()
+def medical_certificate(consultation):
+	"""Pre- or post-employment medical examination report."""
+	require_any("consultation")
+	doc = frappe.get_doc("Clinic Consultation", consultation)
+	doc.check_permission("read")
+	if doc.consultation_type == "Consultation":
+		frappe.throw(_("This is a normal consultation, not an employment medical"))
+	triage = frappe.db.get_value("Clinic Triage", doc.triage, "*", as_dict=True) if doc.triage else None
+	doc.add_comment("Info", _("Medical certificate printed by {0}").format(user_name(frappe.session.user)))
+	return {
+		"clinic": clinic_profile(),
+		"patient": patient_card(doc.patient),
+		"triage": triage,
+		"consultation": doc.name,
+		"consultation_date": doc.consultation_date,
+		"signer": _signer(doc.doctor),
+		"exam_type": doc.consultation_type,
+		"job_position": doc.job_position,
+		"fitness_status": doc.fitness_status,
+		"valid_until": doc.certificate_valid_until,
+		"restrictions": doc.fitness_restrictions,
+		"remarks": doc.medical_remarks,
+		"tests": [{"test": t.test, "result": t.result, "findings": t.findings} for t in doc.medical_tests],
+		"history": {
+			"Past medical": doc.past_medical_history,
+			"Current medication": doc.current_medication,
+			"Allergies": doc.drug_allergies,
+			"Family": doc.family_history,
+			"Social": doc.social_history,
+			"Occupational": doc.occupational_history,
+		},
+		"labs": [t.test_type + (": " + t.interpretation if t.interpretation else "") for t in frappe.get_all(
+			"Clinic Lab Test", filters={"visit": doc.visit, "status": ["!=", "Cancelled"]}, fields=["test_type", "interpretation"])],
+		"diagnoses": [{"diagnosis": d.diagnosis, "type": d.diagnosis_type} for d in doc.diagnoses],
+		"printed_by": user_name(frappe.session.user),
+		"printed_on": now_datetime(),
+	}
+
+
+@frappe.whitelist()
 def monthly_invoice(month, employer=None):
 	"""One compounded invoice per farm for a month: each encounter's total per employee, and a grand total.
 
@@ -330,6 +370,12 @@ def _encounter(doc):
 		"visit": doc.visit,
 		"date": doc.consultation_date,
 		"type": doc.patient_type,
+		"consultation_type": doc.consultation_type,
+		"medical": {
+			"job_position": doc.job_position, "fitness_status": doc.fitness_status, "valid_until": doc.certificate_valid_until,
+			"restrictions": doc.fitness_restrictions, "remarks": doc.medical_remarks,
+			"tests": [{"test": t.test, "result": t.result, "findings": t.findings} for t in doc.medical_tests],
+		} if doc.consultation_type != "Consultation" else None,
 		"doctor": user_name(doc.doctor),
 		"status": doc.status,
 		"triage": triage,
