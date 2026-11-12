@@ -13,8 +13,9 @@ class ClinicVisit(Document):
 		if self.is_new():
 			self.status = "Waiting Lab" if self.visit_purpose == "Lab Only" else "Waiting Triage"
 			self.validate_no_open_visit()
-			t = billing.terms_for_patient(self.patient)
 			self.billable = 1
+		if self.is_new() or self.status not in CLOSED_STATUSES:
+			t = billing.terms_for_patient(self.patient, self.visit_purpose)
 			self.billing_mode = t["billing_mode"]
 			self.sick_sheet_required = 1 if t["sick_sheet"] else 0
 			self.employer = t["employer"]

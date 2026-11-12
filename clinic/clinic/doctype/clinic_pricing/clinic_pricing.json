@@ -7,6 +7,8 @@
 		"consultation_price",
 		"pre_employment_medical",
 		"post_employment_medical",
+		"employment_medical_includes_lab",
+		"employment_medical_billed_to",
 		"section_visit_fees",
 		"mch_first_visit",
 		"mch_revisit",
@@ -40,6 +42,19 @@
 			"fieldtype": "Currency",
 			"label": "Post-Employment Medical",
 			"description": "Charged instead of the consultation price. 0 = use the consultation price"
+		},
+		{
+			"fieldname": "employment_medical_includes_lab",
+			"fieldtype": "Check",
+			"label": "Employment Medical Fee Includes Lab Tests",
+			"description": "Tick if the medical fee already covers the lab tests, so they are not charged on top"
+		},
+		{
+			"fieldname": "employment_medical_billed_to",
+			"fieldtype": "Link",
+			"options": "Clinic Employer",
+			"label": "Bill Employment Medicals To",
+			"description": "A farm that pays for pre/post-employment medicals (invoiced to it). Leave empty for the patient to pay cash"
 		},
 		{
 			"fieldname": "section_visit_fees",
@@ -108,7 +123,7 @@
 		}
 	],
 	"links": [],
-	"modified": "2026-11-12 12:00:00.000000",
+	"modified": "2026-11-12 16:00:00.000000",
 	"modified_by": "Administrator",
 	"module": "Clinic",
 	"name": "Clinic Pricing",

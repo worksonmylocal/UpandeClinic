@@ -77,12 +77,31 @@ FP_REMOVALS = (
 
 
 # ---------------------------------------------------------------- how a visit is billed
+MEDICAL_TYPES = ("Pre-Employment Medical", "Post-Employment Medical")
+
+
+def medical_farm(purpose):
+	"""The farm that pays for employment medicals, when Clinic Pricing names one (applicants are not on the farm's staff list)."""
+	if purpose in MEDICAL_TYPES:
+		return _pricing().get("employment_medical_billed_to") or None
+	return None
+
+
+def lab_included(purpose):
+	"""Employment medicals can be priced to include the lab tests, so the tests are not charged on top."""
+	return bool(purpose in MEDICAL_TYPES and _pricing().get("employment_medical_includes_lab"))
+
+
 def terms(visit):
 	"""Billing mode and sick sheet need for a visit, read live from the patient's employer."""
-	return terms_for_patient(frappe.db.get_value("Clinic Visit", visit, "patient"))
+	v = frappe.db.get_value("Clinic Visit", visit, ["patient", "visit_purpose"], as_dict=True)
+	return terms_for_patient(v.patient, v.visit_purpose)
 
 
-def terms_for_patient(patient):
+def terms_for_patient(patient, purpose=None):
+	farm = medical_farm(purpose)
+	if farm:
+		return {"billing_mode": "Invoice", "sick_sheet": False, "employer": farm}
 	p = frappe.db.get_value("Clinic Patient", patient, ["patient_type", "employer"], as_dict=True)
 	employer = (
 		frappe.db.get_value("Clinic Employer", p.employer, ["requires_sick_sheet", "billed_at_clinic"], as_dict=True)
@@ -118,6 +137,7 @@ def _save(bill):
 def desired_lines(visit):
 	"""{(source doctype, source name): (type, description, qty, rate)} for everything chargeable so far."""
 	lines = {}
+	purpose = frappe.db.get_value("Clinic Visit", visit, "visit_purpose")
 	consultation = frappe.db.get_value("Clinic Visit", visit, "consultation")
 	if consultation:
 		kind = frappe.db.get_value("Clinic Consultation", consultation, "consultation_type") or "Consultation"
@@ -142,11 +162,11 @@ def desired_lines(visit):
 					if att.get(field) in ("Removed", "Replaced") and procedure not in done and not any(r.procedure == procedure for r in att.procedures):
 						done.add(procedure)
 						lines[("Clinic Attendance", f"{att.name}:{procedure}")] = ("Procedure", procedure, 1, procedures.get(procedure, 0))
-	for test in frappe.get_all(
+	for test in ([] if lab_included(purpose) else frappe.get_all(
 		"Clinic Lab Test",
 		filters={"visit": visit, "status": ["in", ["Resulted", "Sent to External"]]},
 		fields=["name", "test_type"],
-	):
+	)):
 		lines[("Clinic Lab Test", test.name)] = ("Lab Test", test.test_type, 1, lab_price(test.test_type))
 	dispensing = frappe.db.get_value("Clinic Dispensing", {"visit": visit, "docstatus": ["!=", 2]}, "name", order_by="creation desc")
 	if dispensing:
@@ -174,6 +194,15 @@ def rebuild(bill):
 	want = desired_lines(bill.visit)
 	have = {(r.reference_doctype, r.reference_name): r for r in bill.items}
 	changed = False
+	t = terms(bill.visit)  # an open bill follows the visit's current terms (e.g. a farm that pays for medicals)
+	if bill.billing_mode != t["billing_mode"] or (bill.employer or None) != (t["employer"] or None):
+		frappe.db.set_value(
+			"Clinic Visit", bill.visit,
+			{"employer": t["employer"], "billing_mode": t["billing_mode"], "sick_sheet_required": 1 if t["sick_sheet"] else 0},
+			update_modified=False,
+		)
+		bill.billing_mode, bill.employer = t["billing_mode"], t["employer"]
+		changed = True
 	for key, row in list(have.items()):
 		if key not in want:
 			bill.remove(row)

@@ -91,7 +91,6 @@
 			"fieldtype": "Link",
 			"label": "Employer",
 			"options": "Clinic Employer",
-			"fetch_from": "patient.employer",
 			"read_only": 1,
 			"in_standard_filter": 1
 		},
@@ -99,7 +98,6 @@
 			"fieldname": "sick_sheet_required",
 			"fieldtype": "Check",
 			"label": "Sick Sheet Required",
-			"fetch_from": "patient.requires_sick_sheet",
 			"read_only": 1,
 			"hidden": 1
 		},
@@ -253,7 +251,7 @@
 		}
 	],
 	"links": [],
-	"modified": "2026-11-12 12:00:00.000000",
+	"modified": "2026-11-12 16:00:00.000000",
 	"modified_by": "Administrator",
 	"module": "Clinic",
 	"name": "Clinic Visit",
