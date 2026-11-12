@@ -17,3 +17,5 @@ clinic.patches.add_specialty_nurse_role
 clinic.patches.load_price_lists
 clinic.patches.fill_clinic_header
 clinic.patches.add_hts_role
+clinic.patches.seed_employers
+clinic.patches.reseed_masters

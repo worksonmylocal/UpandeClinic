@@ -154,6 +154,19 @@ def whoami():
 	}
 
 
+def _employers():
+	"""The farms. A site that has none yet (new install, wiped data) gets the standard list, so the farm picker is never blank."""
+	fields = ["name", "uses_employee_records", "requires_sick_sheet", "billed_at_clinic"]
+	rows = frappe.get_all("Clinic Employer", fields=fields, order_by="uses_employee_records desc, name asc")
+	if not rows:
+		from clinic.setup import seed_employers
+
+		seed_employers()
+		frappe.db.commit()
+		rows = frappe.get_all("Clinic Employer", fields=fields, order_by="uses_employee_records desc, name asc")
+	return rows
+
+
 @frappe.whitelist()
 def masters():
 	"""Lookup lists used by the forms on every page."""
@@ -173,11 +186,7 @@ def masters():
 			fields=["name", "category", "performed_where", "requires_consent", "sample_type"],
 			order_by="category asc, name asc",
 		),
-		"employers": frappe.get_all(
-			"Clinic Employer",
-			fields=["name", "uses_employee_records", "requires_sick_sheet", "billed_at_clinic"],
-			order_by="uses_employee_records desc, name asc",
-		),
+		"employers": _employers(),
 		"departments": frappe.get_all("Department", filters={"is_group": 0}, pluck="name", order_by="name"),
 		"genders": frappe.get_all("Gender", pluck="name", order_by="name"),
 	}
