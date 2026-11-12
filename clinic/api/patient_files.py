@@ -6,11 +6,11 @@ from clinic.api.common import require_any
 
 
 @frappe.whitelist()
-def search(q=None, patient_type=None):
+def search(q=None, patient_type=None, start=0):
 	"""Patients matching the search, with how many consultations they have and the latest one."""
 	require_any("consultation")
 	q = (q or "").strip()
-	cond, args = ["1=1"], {"like": f"%{q}%"}
+	cond, args = ["1=1"], {"like": f"%{q}%", "start": int(start or 0)}
 	if q:
 		cond.append(
 			"(p.full_name LIKE %(like)s OR p.name LIKE %(like)s OR p.national_id LIKE %(like)s "
@@ -28,7 +28,7 @@ def search(q=None, patient_type=None):
 				ORDER BY c.consultation_date DESC LIMIT 1) AS latest,
 			(SELECT MAX(c.consultation_date) FROM `tabClinic Consultation` c WHERE c.patient = p.name) AS last_seen
 		FROM `tabClinic Patient` p WHERE {' AND '.join(cond)}
-		ORDER BY (last_seen IS NULL), last_seen DESC, p.full_name LIMIT 100
+		ORDER BY (last_seen IS NULL), last_seen DESC, p.full_name LIMIT %(start)s, 101
 		""",
 		args,
 		as_dict=True,
