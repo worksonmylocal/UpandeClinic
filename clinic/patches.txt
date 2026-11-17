@@ -20,3 +20,4 @@ clinic.patches.add_hts_role
 clinic.patches.seed_employers
 clinic.patches.reseed_masters
 clinic.patches.remove_hiv_lab_test
+clinic.patches.update_urinalysis_and_sat

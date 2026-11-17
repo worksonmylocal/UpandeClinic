@@ -43,7 +43,7 @@ LAB_PRICES = {
 	"Malaria Test (BS for MPs)": 300, "Malaria RDT": 300, "Stool Analysis": 300, "Haemoglobin": 200,
 	"Blood Group & Rhesus": 200, "VDRL (Syphilis)": 300, "ASOT": 500, "BAT (Brucella Agglutination Test)": 500,
 	"Rheumatoid Factor (RF)": 500, "H. Pylori": 500, "H. Pylori Ab": 500, "Hepatitis B (HBsAg)": 300,
-	"Pregnancy Test (UPT)": 200, "SAT (Salmonella Agglutination Test)": 350, "ANC Profile": 350,
+	"Pregnancy Test (UPT)": 200, "Salmonella Antigen Test": 350, "ANC Profile": 350,
 }
 
 # (procedure, price, note)
