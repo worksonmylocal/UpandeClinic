@@ -72,7 +72,7 @@
     function renderQueues(d) {
         setCount("#waiting-meta", d.waiting.length);
         $("#waiting").innerHTML = d.waiting.length
-            ? d.waiting.map((r) => queueCard(r, `<button class="btn btn--primary btn--sm" data-open="${esc(r.visit)}">Start consultation</button>`)).join("")
+            ? d.waiting.map((r) => queueCard(r, `<button class="btn btn--primary btn--sm" data-open="${esc(r.visit)}">${r.consultation ? "Continue consultation" : "Start consultation"}</button>`, r.consultation ? '<div class="qcard__note">Back from the HTS clinic: finish the encounter</div>' : "")).join("")
             : emptyTile('<path d="M20 6 9 17l-5-5"/>', "No patients waiting. You're all caught up.");
 
         setCount("#results-meta", d.results_ready.length);
@@ -91,7 +91,7 @@
             ? d.in_flight.map((r) => `<div class="qcard"><div class="qcard__stripe"></div>
                 <div><div class="qcard__name">${esc(r.patient_name)} ${typeTag(r.patient_type)}</div>
                 <div class="qcard__meta">${esc(r.visit)} · ${esc(ageSex(r))}</div></div>
-                <div class="qcard__side">${pill(r.status, r.status === "Waiting Lab" ? "info" : "warn")}
+                <div class="qcard__side">${pill(r.status === "Waiting Clinic" || r.status === "In Clinic" ? "At HTS clinic" : r.status, r.status === "Waiting Lab" || r.status === "Waiting Clinic" || r.status === "In Clinic" ? "info" : "warn")}
                 <button class="btn btn--link btn--sm" data-open="${esc(r.visit)}">Open</button></div></div>`).join("")
             : emptyTile('<path d="M21 8l-9-5-9 5v8l9 5 9-5z"/>', "No one at the lab or pharmacy.");
 
@@ -326,6 +326,7 @@
                 ${t ? `<div class="vitals">${vitals}</div>${t.alerts ? `<div class="liveinfo" style="margin:12px 0 0">⚠ ${esc(t.alerts.replace(/\n/g, "; "))}</div>` : ""}${t.triage_notes ? `<div class="printnote" style="margin-top:10px">Nurse: ${esc(t.triage_notes)}</div>` : ""}` : empty("No triage recorded for this visit.")}
             </div>
             ${tbBar(c.tb_screening, locked)}
+            ${cccBar(c, locked)}
             <div class="ws">
                 <div class="card" id="ws-form">
                     <div class="subtabs" id="subtabs">
@@ -449,6 +450,25 @@
         </div>`;
     }
 
+    function cccBar(c, locked) {
+        return `<div class="cccbar ${c.ccc_client ? "on" : ""}" id="cccbar">
+            <div class="tbbar__head"><h3>CCC</h3><span>Comprehensive Care Centre: patients who come for HIV medication, which is not dispensed from this system</span></div>
+            <label class="cccbox"><input type="checkbox" id="ccc-box" ${c.ccc_client ? "checked" : ""} ${locked ? "disabled" : ""}>
+                <span class="cccbox__mark"></span>
+                <span class="cccbox__text"><b>CCC client</b><small>${c.ccc_client ? "No consultation fee is charged at the pharmacy, and the encounter can be completed without a diagnosis." : "Tick when the patient is here for CCC (HIV care) medication."}</small></span></label>
+        </div>`;
+    }
+
+    async function toggleCcc(box) {
+        const on = box.checked ? 1 : 0;
+        try {
+            await save(false);
+            await call("consultation.save", { name: ws.consultation.name, data: { ccc_client: on } });
+            toast(on ? "Marked as a CCC client: no consultation fee" : "CCC client mark removed");
+            renderWorkspace(await call("consultation.workspace", { visit: ws.visit.name }));
+        } catch (e) { box.checked = !on; }
+    }
+
     async function chooseTb(code) {
         const c = ws.consultation;
         if (Number(String(c.tb_screening || "0")[0]) === code) return;
@@ -471,6 +491,7 @@
 
     function bindWorkspace(root, locked, isEmp) {
         $$("[data-tb]", root).forEach((b) => b.addEventListener("click", () => chooseTb(Number(b.dataset.tb))));
+        $("#ccc-box", root)?.addEventListener("change", (e) => toggleCcc(e.target));
         $$(".subtab", root).forEach((b) => b.addEventListener("click", () => {
             $$(".subtab", root).forEach((x) => x.classList.toggle("on", x === b));
             $$(".subpanel", root).forEach((x) => x.classList.toggle("on", x.id === "sp-" + b.dataset.p));
@@ -768,12 +789,26 @@
         const printMed = isMedical() ? '<button class="btn" id="a-print-med" type="button">Print medical report</button> ' : "";
         const bindPrint = () => $("#a-print-med")?.addEventListener("click", async () => { if (!locked()) await save(false); window.open(`/clinic/certificate?consultation=${encodeURIComponent(ws.consultation.name)}`, "_blank"); });
         if (locked()) { box.innerHTML = printMed; bindPrint(); return; }
+        const hts = ws.consultation.hts_status;
         const unsent = state.lab.some((r) => !r.lab_test);
         const hasRx = state.rx.length > 0;
         box.innerHTML = `${printMed}
             ${unsent ? '<button class="btn btn--signal" id="a-lab">Send to Lab →</button>' : ""}
             ${hasRx ? `<button class="btn ${unsent ? "" : "btn--primary"}" id="a-rx">Send to Pharmacy →</button>`
-                : `<button class="btn ${unsent ? "" : "btn--primary"}" id="a-done">Complete consultation ✓</button>`}`;
+                : `<button class="btn ${unsent ? "" : "btn--primary"}" id="a-done">Complete consultation ✓</button>`}
+            <div class="actionbar__row2">${hts === "Done" ? '<span class="pill good">HTS done</span>'
+                : hts === "Sent" ? '<span class="pill info">At the HTS clinic</span>'
+                : '<button class="btn btn--signal" id="a-hts" type="button">Send to HTS →</button>'}</div>`;
+        $("#a-hts")?.addEventListener("click", async () => {
+            if (state.lab.some((r) => !r.lab_test)) return toast("Send the new lab requests first, or remove them.", "warn");
+            const ok = await new Promise((resolve) => modal({
+                title: "Send to HTS clinic",
+                body: `<p style="margin:0;color:var(--ink-3)">The patient joins the <b>HTS clinic</b> queue and comes back to your queue when testing is done, so you can complete the encounter.</p>`,
+                foot: [{ label: "Cancel", onClick: (hh) => { resolve(false); hh.close(); } }, { label: "Send to HTS", cls: "btn--primary", onClick: (hh) => { resolve(true); hh.close(); } }],
+                onClose: () => resolve(false),
+            }));
+            if (ok) act("send_to_hts", "Sent to the HTS clinic. They return to your queue when done.");
+        });
         bindPrint(); $("#a-lab")?.addEventListener("click", () => act("send_to_lab", "Sent to the lab"));
         $("#a-rx")?.addEventListener("click", () => {
             if (state.lab.some((r) => !r.lab_test)) return toast("Send the new lab requests first, or remove them.", "warn");

@@ -568,7 +568,7 @@
         const box = $("#actions");
         if (locked()) { box.innerHTML = ""; return; }
         if (isHts) {
-            box.innerHTML = '<button class="btn btn--primary" id="a-done">Complete ✓</button>';
+            box.innerHTML = `<button class="btn btn--primary" id="a-done">${ws.visit.consultation ? "Complete &amp; return to doctor ✓" : "Complete ✓"}</button>`;
             $("#a-done").addEventListener("click", () => act("complete", "Attendance completed"));
             return;
         }

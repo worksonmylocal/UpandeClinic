@@ -24,6 +24,9 @@
 		"section_1",
 		"tb_screening",
 		"tb_screening_code",
+		"section_ccc",
+		"ccc_client",
+		"hts_status",
 		"tab_4",
 		"presenting_complaint",
 		"history_of_presenting_illness",
@@ -532,10 +535,30 @@
 			"fieldname": "medical_remarks",
 			"fieldtype": "Text",
 			"label": "Examiner's Remarks"
+		},
+		{
+			"fieldname": "section_ccc",
+			"fieldtype": "Section Break",
+			"label": "CCC"
+		},
+		{
+			"fieldname": "ccc_client",
+			"fieldtype": "Check",
+			"label": "CCC client (HIV care, medication not dispensed here)",
+			"no_copy": 1,
+			"description": "Tick for a patient who came for HIV medication from the Comprehensive Care Centre. No consultation fee is charged."
+		},
+		{
+			"fieldname": "hts_status",
+			"fieldtype": "Select",
+			"label": "HTS Referral",
+			"options": "\nSent\nDone",
+			"read_only": 1,
+			"no_copy": 1
 		}
 	],
 	"links": [],
-	"modified": "2026-11-12 12:00:00.000000",
+	"modified": "2026-11-17 09:00:00.000000",
 	"modified_by": "Administrator",
 	"module": "Clinic",
 	"name": "Clinic Consultation",

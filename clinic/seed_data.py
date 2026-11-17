@@ -216,21 +216,6 @@ LAB_TEST_TYPES = [
 			},
 		],
 	},
-	{
-		"test_name": "HIV Screening (Rapid Test)",
-		"category": "Serology",
-		"sample_type": "Blood",
-		"performed_where": "Onsite",
-		"requires_consent": 1,
-		"parameters": [
-			{
-				"parameter": "HIV Rapid Test",
-				"result_type": "Qualitative",
-				"unit": "",
-				"options": "Non-reactive\nReactive",
-			},
-		],
-	},
 ]
 
 # (diagnosis, ICD-10 code, category, occupational)

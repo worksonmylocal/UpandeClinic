@@ -28,7 +28,9 @@
 		"column_2",
 		"payment_details",
 		"section_screen_lock",
-		"idle_lock_minutes"
+		"idle_lock_minutes",
+		"section_waiver",
+		"clinic_manager"
 	],
 	"fields": [
 		{
@@ -167,10 +169,22 @@
 			"label": "Lock Screen After (minutes of inactivity)",
 			"default": "15",
 			"description": "For everyone. A user's own setting on their Clinic Staff Profile overrides it. Between 1 and 240."
+		},
+		{
+			"fieldname": "section_waiver",
+			"fieldtype": "Section Break",
+			"label": "Fee Waivers"
+		},
+		{
+			"fieldname": "clinic_manager",
+			"fieldtype": "Link",
+			"label": "Clinic Manager",
+			"options": "User",
+			"description": "Signs off fee waivers at the pharmacy: the pharmacist asks for this person's screen-lock PIN before a patient's bill is waived."
 		}
 	],
 	"links": [],
-	"modified": "2026-09-30 16:23:08.483480",
+	"modified": "2026-11-17 09:00:00.000000",
 	"modified_by": "Administrator",
 	"module": "Clinic",
 	"name": "Clinic Settings",

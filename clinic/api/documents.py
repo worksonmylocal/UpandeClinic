@@ -144,6 +144,10 @@ def receipt(bill):
 		"paid_on": doc.paid_on,
 		"payment_mode": doc.payment_mode,
 		"payment_reference": doc.payment_reference,
+		"waived": doc.waived,
+		"waived_amount": flt(doc.waived_amount),
+		"waiver_reason": doc.waiver_reason,
+		"waived_by": user_name(doc.waived_by) if doc.waived_by else None,
 		"lines": [
 			{"item_type": r.item_type, "description": r.description, "qty": flt(r.qty), "rate": flt(r.rate), "amount": flt(r.amount)}
 			for r in doc.items

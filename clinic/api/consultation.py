@@ -27,7 +27,7 @@ TEXT_FIELDS = [
 	"referral_notes", "follow_up_date", "follow_up_reason",
 	"job_position", "fitness_status", "certificate_valid_until", "fitness_restrictions", "medical_remarks",
 ]
-CHECK_FIELDS = ["work_related", "refer_out", "follow_up_required"]
+CHECK_FIELDS = ["work_related", "refer_out", "follow_up_required", "ccc_client"]
 INT_FIELDS = ["sick_leave_days", "light_duty_days"]
 
 
@@ -66,6 +66,13 @@ def dashboard():
 	in_flight = frappe.get_all(
 		"Clinic Visit",
 		filters={"status": ["in", ["Waiting Lab", "Waiting Pharmacy"]], "consultation": ["is", "set"], "attendance": ["is", "not set"]},
+		fields=["name as visit", "patient_name", "patient_type", "status", "sex", "age_years"],
+		order_by="modified asc",
+	)
+	# patients the doctor has sent to the HTS clinic: they return here when testing is done
+	in_flight += frappe.get_all(
+		"Clinic Visit",
+		filters={"status": ["in", ["Waiting Clinic", "In Clinic"]], "service_point": "HTS Clinic", "consultation": ["is", "set"]},
 		fields=["name as visit", "patient_name", "patient_type", "status", "sex", "age_years"],
 		order_by="modified asc",
 	)
@@ -418,6 +425,8 @@ def action(name, action, data=None):
 		doc.send_to_lab()
 	elif action == "send_to_pharmacy":
 		doc.send_to_pharmacy()
+	elif action == "send_to_hts":
+		doc.send_to_hts()
 	elif action == "complete":
 		doc.complete_consultation()
 	else:

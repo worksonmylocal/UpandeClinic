@@ -199,6 +199,8 @@ a{color:inherit}
 .btn--primary:hover{background:var(--grad-ink);transform:translateY(-1px);box-shadow:0 8px 20px rgba(10,10,10,0.25)}
 .btn--signal{background:var(--signal);color:#fff}
 .btn--signal:hover{background:#1c7570}
+.btn--warn{background:var(--warn-bg);color:var(--warn);border:1px solid rgba(185,119,14,0.35)}
+.btn--warn:hover{background:rgba(185,119,14,0.18)}
 .btn--danger{background:var(--bad-bg);color:var(--bad)}
 .btn--danger:hover{background:var(--bad);color:#fff}
 .btn--sm{padding:6px 14px;font-size:12px}
@@ -599,3 +601,16 @@ body{--accent:rgb(var(--accent-rgb));--accent-soft:rgba(var(--accent-rgb),.20);-
 .qcard--link:hover{box-shadow:var(--shadow-hover)}
 .stage{font:600 11px var(--sans);padding:3px 10px;border-radius:999px;white-space:nowrap}
 .topbar__nav a{white-space:nowrap}
+
+/* CCC (HIV care) tick-box under the TB screening bar */
+.cccbar{background:var(--surface-2);border-radius:24px;box-shadow:var(--shadow-card);padding:16px 24px;margin-bottom:18px;border:1.5px solid var(--accent-soft)}
+.cccbar.on{border-color:var(--good);background:rgba(31,138,76,0.07)}
+.cccbox{display:flex;align-items:center;gap:14px;cursor:pointer;margin:0}
+.cccbox input{position:absolute;opacity:0;width:0;height:0}
+.cccbox__mark{flex:0 0 28px;height:28px;border-radius:9px;border:2px solid var(--ink-mute);background:#fff;display:grid;place-items:center;transition:all .15s}
+.cccbox input:checked+.cccbox__mark{background:var(--good);border-color:var(--good)}
+.cccbox input:checked+.cccbox__mark::after{content:"";width:7px;height:13px;border:solid #fff;border-width:0 3px 3px 0;transform:rotate(45deg) translate(-1px,-1px)}
+.cccbox input:focus-visible+.cccbox__mark{outline:3px solid var(--accent-soft);outline-offset:2px}
+.cccbox__text{display:flex;flex-direction:column;gap:2px;font-size:14px;color:var(--ink)}
+.cccbox__text small{font-size:12px;color:var(--ink-mute)}
+.actionbar__row2{flex-basis:100%;display:flex;justify-content:flex-end;gap:10px;margin-top:10px}

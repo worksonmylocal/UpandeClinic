@@ -1,14 +1,14 @@
 """Data and actions behind the Pharmacy page."""
 
 import frappe
-from frappe.utils import add_days, nowdate
+from frappe.utils import add_days, getdate, nowdate
 
 from frappe import _
 from frappe.utils import flt
 
 from clinic import billing
 from clinic.referrals import referral_for_visit
-from clinic.api.common import clean, minutes_since, patient_card, period_range, require, to_number, today_start, user_name
+from clinic.api.common import clean, minutes_since, patient_card, period_range, require, require_any, to_number, today_start, user_name
 
 
 @frappe.whitelist()
@@ -71,7 +71,7 @@ def dashboard():
 		b.visit: b
 		for b in frappe.get_all(
 			"Clinic Bill", {"status": ["in", ["Paid", "Invoiced"]], "visit": ["in", [r.visit for r in dispensed] or [""]]},
-			["visit", "name", "receipt_no", "invoice_no", "total", "status", "billing_mode"]
+			["visit", "name", "receipt_no", "invoice_no", "total", "status", "billing_mode", "waived"]
 		)
 	}
 	needs_sheet = {r.visit for r in dispensed if billing.terms(r.visit)["sick_sheet"]}
@@ -100,10 +100,13 @@ def dashboard():
 	)[0]
 
 	collected = frappe.db.sql(
-		"SELECT IFNULL(SUM(total), 0), COUNT(*) FROM `tabClinic Bill` WHERE status = 'Paid' AND paid_on >= %s", start
+		"SELECT IFNULL(SUM(total), 0), COUNT(*) FROM `tabClinic Bill` WHERE status = 'Paid' AND IFNULL(waived, 0) = 0 AND paid_on >= %s", start
 	)[0]
 	invoiced = frappe.db.sql(
 		"SELECT IFNULL(SUM(total), 0), COUNT(*) FROM `tabClinic Bill` WHERE invoiced_on >= %s", start
+	)[0]
+	waived = frappe.db.sql(
+		"SELECT IFNULL(SUM(waived_amount), 0), COUNT(*) FROM `tabClinic Bill` WHERE waived = 1 AND waived_on >= %s", start
 	)[0]
 
 	return {
@@ -114,6 +117,8 @@ def dashboard():
 			"receipts_today": collected[1],
 			"invoiced_today": flt(invoiced[0]),
 			"invoices_today": invoiced[1],
+			"waived_today": flt(waived[0]),
+			"waivers_today": waived[1],
 			"with_allergies": sum(1 for r in pending if r.allergies),
 			"dispensed_today": stats.prescriptions,
 			"units_today": round(stats.units or 0),
@@ -159,6 +164,29 @@ def insights(period="month"):
 
 
 @frappe.whitelist()
+def waived_fees(from_date=None, to_date=None):
+	"""Fees waived for patients who could not pay: who, how much, why and who authorised it."""
+	require_any("pharmacy")
+	start = getdate(from_date or nowdate())
+	end = getdate(to_date or start)
+	if end < start:
+		start, end = end, start
+	rows = frappe.db.sql(
+		"""
+		SELECT b.name AS bill, b.visit, b.patient, b.patient_name, b.patient_type, b.waived_on, b.waived_amount AS amount,
+			b.waiver_reason AS reason, b.waived_by, b.received_by AS cashier, b.receipt_no,
+			(SELECT full_name FROM `tabUser` WHERE name = b.waived_by) AS authorised_by,
+			(SELECT full_name FROM `tabUser` WHERE name = b.received_by) AS cashier_name
+		FROM `tabClinic Bill` b WHERE b.waived = 1 AND b.waived_on BETWEEN %(a)s AND %(b)s ORDER BY b.waived_on DESC
+		""",
+		{"a": f"{start} 00:00:00", "b": f"{end} 23:59:59"},
+		as_dict=True,
+	)
+	return {"range": {"from": str(start), "to": str(end)}, "rows": rows,
+		"summary": {"count": len(rows), "amount": sum(flt(r.amount) for r in rows)}}
+
+
+@frappe.whitelist()
 def get_dispensing(name):
 	require("pharmacy")
 	doc = frappe.get_doc("Clinic Dispensing", name)
@@ -179,15 +207,30 @@ def get_dispensing(name):
 	t = billing.terms(doc.visit)
 	data.update(billable=True, billing_mode=t["billing_mode"], sick_sheet=t["sick_sheet"], employer=t["employer"])
 	data["bill"] = billing.summary(doc.visit)
+	data["can_waive"] = _can_waive(t)
 	data["referral"] = referral_for_visit(doc.visit)
 	data["prices"] = billing.drug_prices()
 	data["courses"] = {drug: {"price": price, "course_qty": course} for drug, (price, course) in billing.drug_courses().items()}
 	return data
 
 
+def _can_waive(terms):
+	"""Cash patients can have their fees waived once a Clinic Manager is named in Clinic Settings."""
+	return terms["billing_mode"] == "Cash" and bool(frappe.db.get_single_value("Clinic Settings", "clinic_manager"))
+
+
 def _payment_args(payment):
 	payment = frappe.parse_json(payment) if payment else {}
 	return payment.get("mode"), flt(payment.get("amount")), clean(payment.get("reference"))
+
+
+def _settle(visit, payment):
+	"""Take the cash, or waive the fees when the Clinic Manager has signed the waiver off with their PIN."""
+	data = frappe.parse_json(payment) if payment else {}
+	if data.get("waive"):
+		return billing.waive(visit, data.get("reason"), data.get("pin"))
+	mode, amount, reference = _payment_args(payment)
+	return billing.pay(visit, mode, amount, reference)
 
 
 @frappe.whitelist()
@@ -211,8 +254,7 @@ def dispense(name, items, notes=None, submit=1, payment=None):
 			if bill.billing_mode == "Invoice":
 				bill = billing.issue_invoice(doc.visit)
 			else:
-				mode, amount, reference = _payment_args(payment)
-				bill = billing.pay(doc.visit, mode, amount, reference)  # settled first so the visit can close
+				bill = _settle(doc.visit, payment)  # settled first so the visit can close
 		doc.submit()
 	settled = bill if bill and bill.status in ("Paid", "Invoiced") else None
 	return {
@@ -239,6 +281,7 @@ def get_payment(visit):
 		"billing_mode": t["billing_mode"],
 		"sick_sheet": t["sick_sheet"],
 		"bill": billing.summary(visit),
+		"can_waive": _can_waive(t),
 		"referral": referral_for_visit(visit),
 	}
 
@@ -254,8 +297,7 @@ def _close_visit(visit):
 def take_payment(visit, payment):
 	"""Cash patient with nothing to dispense."""
 	require("pharmacy")
-	mode, amount, reference = _payment_args(payment)
-	bill = billing.pay(visit, mode, amount, reference)
+	bill = _settle(visit, payment)
 	_close_visit(visit)
 	return {"bill": bill.name, "document": "receipt", "visit": visit, "sick_sheet": billing.terms(visit)["sick_sheet"],
 		"referral": bool(referral_for_visit(visit)),

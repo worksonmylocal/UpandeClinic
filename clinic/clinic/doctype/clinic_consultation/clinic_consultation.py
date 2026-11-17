@@ -37,6 +37,10 @@ class ClinicConsultation(Document):
 		self.validate_prescriptions()
 		self.tb_screening_code = cint((self.tb_screening or "0")[:1])
 
+	def on_update(self):
+		if self.has_value_changed("ccc_client") and not self.is_new():
+			billing.sync(self.visit, create=False)  # a CCC client carries no consultation fee
+
 	def after_insert(self):
 		frappe.db.set_value("Clinic Visit", self.visit, "consultation", self.name)
 		set_visit_status(self.visit, "In Consultation")
@@ -193,6 +197,26 @@ class ClinicConsultation(Document):
 		self.finalise("Waiting Pharmacy")
 
 	@frappe.whitelist()
+	def send_to_hts(self):
+		"""Hand the patient to the HTS clinic queue. They come back to the doctor's queue once testing is done."""
+		self.check_permission("write")
+		if self.status == "Completed":
+			frappe.throw(_("This consultation is already completed"))
+		if self.hts_status == "Sent":
+			frappe.throw(_("This patient is already with the HTS clinic"))
+		if self.hts_status == "Done":
+			frappe.throw(_("HTS has already been done for this visit"))
+		if frappe.db.get_value("Clinic Visit", self.visit, "attendance"):
+			frappe.throw(_("This visit already has a clinic attendance, so it cannot be sent to HTS"))
+		pending = frappe.db.count("Clinic Lab Test", {"visit": self.visit, "status": ["in", PENDING_LAB_STATUSES]})
+		if pending:
+			frappe.throw(_("{0} lab test(s) are still awaiting results. Wait for them before sending to HTS.").format(pending))
+		self.hts_status = "Sent"
+		self.save()
+		frappe.db.set_value("Clinic Visit", self.visit, "service_point", "HTS Clinic")
+		set_visit_status(self.visit, "Waiting Clinic")
+
+	@frappe.whitelist()
 	def complete_consultation(self):
 		self.check_permission("write")
 		if self.prescriptions and not self.dispensing:
@@ -207,7 +231,7 @@ class ClinicConsultation(Document):
 		if self.consultation_type in MEDICAL_TYPES:
 			if not self.fitness_status:
 				frappe.throw(_("Record the fitness outcome on the Medical Examination tab before closing"))
-		elif not self.diagnoses and not (self.impression or "").strip():
+		elif not self.ccc_client and not self.diagnoses and not (self.impression or "").strip():
 			frappe.throw(_("Add a diagnosis, or write your impression, before closing the consultation"))
 		pending = frappe.db.count(
 			"Clinic Lab Test", {"visit": self.visit, "status": ["in", PENDING_LAB_STATUSES]}

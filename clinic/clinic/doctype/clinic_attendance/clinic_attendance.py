@@ -600,7 +600,23 @@ class ClinicAttendance(Document):
 		if self.prescriptions and not self.dispensing:
 			frappe.throw(_("There are prescriptions on this attendance. Use Send to Pharmacy."))
 		self.validate_ready_to_close()
+		if self.return_to_doctor():
+			return
 		self.finalise("Completed")
+
+	def return_to_doctor(self):
+		"""A client the doctor sent for HIV testing goes back to the doctor's queue to finish the encounter."""
+		if self.service_type != "HTS Attendance":
+			return False
+		consultation = frappe.db.get_value("Clinic Visit", self.visit, "consultation")
+		if not consultation or frappe.db.get_value("Clinic Consultation", consultation, "status") == "Completed":
+			return False
+		self.status = "Completed"
+		self.save()
+		frappe.db.set_value("Clinic Consultation", consultation, "hts_status", "Done")
+		frappe.db.set_value("Clinic Visit", self.visit, "service_point", "Consultation")
+		set_visit_status(self.visit, "Waiting Consultation")
+		return True
 
 	def validate_ready_to_close(self, require_diagnosis=True, complete_register=True):
 		if self.service_type == "CWC Attendance" and complete_register:

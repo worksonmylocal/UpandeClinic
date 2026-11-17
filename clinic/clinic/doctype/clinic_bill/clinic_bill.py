@@ -18,4 +18,4 @@ class ClinicBill(Document):
 		self.procedure_total = totals["Procedure"]
 		self.lab_total = totals["Lab Test"]
 		self.drug_total = totals["Drug"]
-		self.total = sum(totals.values())
+		self.total = 0 if self.waived else sum(totals.values())  # a waived bill is brought back to nothing

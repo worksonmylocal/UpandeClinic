@@ -29,7 +29,7 @@ def execute(filters=None):
 		SELECT {expr} AS period, COUNT(*) AS receipts, SUM(b.consultation_total) AS consultation,
 			SUM(b.procedure_total) AS procedures, SUM(b.lab_total) AS lab, SUM(b.drug_total) AS drugs, SUM(b.total) AS total
 		FROM `tabClinic Bill` b
-		WHERE b.status = 'Paid' AND DATE(b.paid_on) BETWEEN %(from_date)s AND %(to_date)s {conditions}
+		WHERE b.status = 'Paid' AND IFNULL(b.waived, 0) = 0 AND DATE(b.paid_on) BETWEEN %(from_date)s AND %(to_date)s {conditions}
 		GROUP BY period ORDER BY period
 		""",
 		filters,

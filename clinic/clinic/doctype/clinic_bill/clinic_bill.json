@@ -31,7 +31,14 @@
 		"payment_reference",
 		"paid_on",
 		"received_by",
-		"receipt_no"
+		"receipt_no",
+		"section_waiver",
+		"waived",
+		"waived_amount",
+		"waiver_reason",
+		"column_waiver",
+		"waived_by",
+		"waived_on"
 	],
 	"fields": [
 		{
@@ -181,7 +188,7 @@
 			"fieldname": "payment_mode",
 			"fieldtype": "Select",
 			"label": "Payment Mode",
-			"options": "\nCash\nM-Pesa\nBank / Card\nBank Transfer\nCheque\nOther"
+			"options": "\nCash\nM-Pesa\nBank / Card\nBank Transfer\nCheque\nOther\nWaived"
 		},
 		{
 			"fieldname": "amount_paid",
@@ -226,10 +233,56 @@
 			"in_list_view": 1,
 			"search_index": 1,
 			"no_copy": 1
+		},
+		{
+			"fieldname": "section_waiver",
+			"fieldtype": "Section Break",
+			"label": "Fee Waiver"
+		},
+		{
+			"fieldname": "waived",
+			"fieldtype": "Check",
+			"label": "Fees Waived",
+			"read_only": 1,
+			"search_index": 1,
+			"no_copy": 1
+		},
+		{
+			"fieldname": "waived_amount",
+			"fieldtype": "Currency",
+			"label": "Amount Waived",
+			"read_only": 1,
+			"no_copy": 1
+		},
+		{
+			"fieldname": "waiver_reason",
+			"fieldtype": "Small Text",
+			"label": "Reason for Waiver",
+			"read_only": 1,
+			"no_copy": 1
+		},
+		{
+			"fieldname": "column_waiver",
+			"fieldtype": "Column Break"
+		},
+		{
+			"fieldname": "waived_by",
+			"fieldtype": "Link",
+			"label": "Authorised By (Clinic Manager)",
+			"options": "User",
+			"read_only": 1,
+			"no_copy": 1
+		},
+		{
+			"fieldname": "waived_on",
+			"fieldtype": "Datetime",
+			"label": "Waived On",
+			"read_only": 1,
+			"no_copy": 1
 		}
 	],
 	"links": [],
-	"modified": "2026-09-30 16:23:08.483480",
+	"modified": "2026-11-17 09:00:00.000000",
 	"modified_by": "Administrator",
 	"module": "Clinic",
 	"name": "Clinic Bill",

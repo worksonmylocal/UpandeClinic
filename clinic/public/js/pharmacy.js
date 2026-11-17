@@ -9,7 +9,7 @@
         sub: "Dispense prescriptions, take payment and print receipts and sick sheets",
         tools: `<button class="btn btn--sm" id="monthly-inv" title="One invoice per farm for a month">Monthly farm invoice</button> <button class="iconbtn" id="refresh" title="Refresh">${Desk.REFRESH_ICON}</button>`,
     });
-    Desk.tabs((tab) => tab === "insights" && loadInsights());
+    Desk.tabs((tab) => { if (tab === "insights") loadInsights(); if (tab === "waived") loadWaived(); });
     const period = Desk.periodToggle($("#period"), () => loadInsights(), "month");
     $("#refresh").addEventListener("click", () => { loadAll(); toast("Refreshed"); });
 
@@ -48,6 +48,7 @@
             { label: "Dispensed Today", value: k.dispensed_today, unit: Desk.split(k.employees_today, k.community_today) },
             { label: "Items Dispensed", value: num(k.units_today), unit: `${k.lines_today} medicine lines today` },
             { label: "Invoiced to Farms", value: money(k.invoiced_today), cls: "info", unit: `${k.invoices_today} invoice${k.invoices_today === 1 ? "" : "s"} today` },
+            { label: "Fees Waived Today", value: money(k.waived_today), cls: k.waived_today ? "warn" : "", unit: `${k.waivers_today} waiver${k.waivers_today === 1 ? "" : "s"} signed off` },
             { label: "Allergy Alerts", value: k.with_allergies, cls: k.with_allergies ? "bad" : "", unit: "Waiting patients with allergies on file" },
         ]);
         renderQueue(); renderDispensed();
@@ -83,7 +84,7 @@
         $("#dispensed").innerHTML = dash.dispensed.length ? `<table class="dtable"><tr><th>Time</th><th>Patient</th><th>Type</th><th class="num">Items</th><th>Billing</th><th>Pharmacist</th><th></th></tr>
             ${dash.dispensed.map((r) => `<tr><td>${timeOf(r.dispensed_on)}</td><td><b style="color:var(--ink)">${esc(r.patient_name)}</b></td><td>${typeTag(r.patient_type)}</td>
                 <td class="num">${r.item_count}</td>
-                <td>${r.bill ? `${money(r.bill.total)} ${r.bill.status === "Invoiced" ? pill("Invoiced", "info") : pill("Paid", "good")}<br><span class="printnote">${esc(r.bill.invoice_no || r.bill.receipt_no || "")}</span>` : "—"}</td>
+                <td>${r.bill ? `${money(r.bill.total)} ${r.bill.status === "Invoiced" ? pill("Invoiced", "info") : r.bill.waived ? pill("Waived", "warn") : pill("Paid", "good")}<br><span class="printnote">${esc(r.bill.invoice_no || r.bill.receipt_no || "")}</span>` : "—"}</td>
                 <td>${esc(r.pharmacist_name || "")}</td>
                 <td class="num">${r.bill && r.bill.invoice_no ? `<a class="btn btn--sm" target="_blank" href="${invoiceUrl(r.bill.name)}">Invoice</a> ` : ""}${r.bill && r.bill.receipt_no ? `<a class="btn btn--sm" target="_blank" href="${receiptUrl(r.bill.name)}">Receipt</a> ` : ""}${r.sick_sheet ? `<a class="btn btn--sm" target="_blank" href="${sheetUrl(r.visit)}">Sick sheet</a> ` : ""}${r.referral ? letterBtn(r.visit) : ""}<button class="btn btn--link btn--sm" data-open="${esc(r.name)}">View</button></td></tr>`).join("")}</table>`
             : empty("Nothing dispensed yet today.");
@@ -134,6 +135,48 @@
         amount.addEventListener("input", update); update();
         return update;
     }
+    // The Clinic Manager signs a waiver off with their screen-lock PIN; nothing is kept of the PIN on this page.
+    function askWaiver(total, patientName) {
+        return new Promise((resolve) => {
+            let done = false;
+            const finish = (v, hh) => { done = true; resolve(v); hh.close(); };
+            modal({
+                title: "Waive fees",
+                sub: `${esc(patientName || "Patient")} · ${money(total)} will be waived and the bill brought back to ${money(0)}`,
+                body: `<div class="liveinfo" style="background:var(--warn-bg);color:var(--warn)">Only for a patient who cannot pay. The Clinic Manager must authorise it.</div>
+                    ${field("waive_reason", "Reason for waiver", { type: "textarea", rows: 3, required: true, placeholder: "e.g. Patient has no money; referred by the chief" })}
+                    ${field("waive_pin", "Clinic Manager Signoff (screen-lock PIN)", { type: "password", required: true, attrs: 'autocomplete="new-password" inputmode="numeric" maxlength="12"', help: "The Clinic Manager enters their own PIN. It is checked, never stored." })}`,
+                foot: [{ label: "Cancel", onClick: (hh) => finish(null, hh) },
+                       { label: "Authorise waiver", cls: "btn--primary", onClick: (hh) => {
+                           const v = read(hh.body);
+                           if (!(v.waive_reason || "").trim()) return toast("Give the reason for the waiver", "warn");
+                           if (!(v.waive_pin || "").trim()) return toast("The Clinic Manager's PIN is required", "warn");
+                           finish({ waive: 1, reason: v.waive_reason.trim(), pin: v.waive_pin.trim() }, hh);
+                       } }],
+                onClose: () => { if (!done) resolve(null); },
+            });
+        });
+    }
+
+    async function loadWaived() {
+        const f = $("#wv-from").value || undefined, t = $("#wv-to").value || undefined;
+        const d = await call("pharmacy.waived_fees", { from_date: f, to_date: t });
+        $("#wv-from").value = d.range.from; $("#wv-to").value = d.range.to;
+        $("#wv-meta").textContent = `${d.summary.count} waiver${d.summary.count === 1 ? "" : "s"} · ${money(d.summary.amount)} waived`;
+        $("#waived").innerHTML = d.rows.length ? `<table class="dtable"><tr><th>Date</th><th>Patient</th><th class="num">Amount waived</th><th>Reason</th><th>Authorised by</th><th>Pharmacist</th><th>Receipt</th></tr>
+            ${d.rows.map((r) => `<tr><td>${esc(Desk.dateOf(String(r.waived_on).slice(0, 10)))} ${timeOf(r.waived_on)}</td><td><b style="color:var(--ink)">${esc(r.patient_name)}</b></td><td class="num">${money(r.amount)}</td><td>${esc(r.reason || "")}</td><td>${esc(r.authorised_by || r.waived_by || "")}</td><td>${esc(r.cashier_name || r.cashier || "")}</td><td><a class="btn btn--sm" target="_blank" href="${receiptUrl(r.bill)}">${esc(r.receipt_no || "Receipt")}</a></td></tr>`).join("")}
+            <tr class="billtotal"><td colspan="2">Total waived</td><td class="num">${money(d.summary.amount)}</td><td colspan="4"></td></tr></table>`
+            : empty("No fees were waived in this period.");
+        $("#wv-csv").onclick = () => {
+            const q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+            const csv = [["Date", "Patient", "Bill", "Amount waived (KSh)", "Reason", "Authorised by", "Pharmacist"].map(q).join(",")]
+                .concat(d.rows.map((r) => [r.waived_on, r.patient_name, r.bill, r.amount, r.reason, r.authorised_by || r.waived_by, r.cashier_name || r.cashier].map(q).join(","))).join("\n");
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = `waived-fees-${d.range.from}-to-${d.range.to}.csv`; a.click();
+        };
+    }
+    $("#wv-from").addEventListener("change", loadWaived); $("#wv-to").addEventListener("change", loadWaived);
+
     const paymentValues = (root) => { const v = read(root); return { mode: v.pay_mode, amount: v.pay_amount, reference: v.pay_reference }; };
 
     function printDialog({ patient, bill, document, visit, sickSheet, referral }) {
@@ -179,7 +222,7 @@
                 ${!done ? `<div class="subhead" style="margin-top:22px">${invoiceMode ? "Invoice" : "Bill &amp; payment"}</div><div id="bill-box"></div>${invoiceMode
                     ? `<div class="liveinfo" style="background:var(--info-bg);color:var(--info)">Charged to <b>${esc(d.employer || "the employer")}</b> on an invoice. No money is taken here: the employee carries the invoice back to the farm, which pays later.</div>`
                     : paymentFields(0)}` : ""}
-                ${done && d.bill ? `<div class="subhead" style="margin-top:22px">Bill</div>${billPanel(d.bill.lines, d.bill.total)}<div class="printnote">${d.bill.invoice_no ? "Invoice " + esc(d.bill.invoice_no) + (d.bill.status === "Paid" ? " · paid by the farm" : " · awaiting payment by the farm") : d.bill.status === "Paid" ? "Paid · receipt " + esc(d.bill.receipt_no || "") : "Unpaid"}</div>` : ""}`,
+                ${done && d.bill ? `<div class="subhead" style="margin-top:22px">Bill</div>${billPanel(d.bill.lines, d.bill.total)}<div class="printnote">${d.bill.invoice_no ? "Invoice " + esc(d.bill.invoice_no) + (d.bill.status === "Paid" ? " · paid by the farm" : " · awaiting payment by the farm") : d.bill.status === "Paid" ? (d.bill.waived ? "Fees waived · receipt " : "Paid · receipt ") + esc(d.bill.receipt_no || "") : "Unpaid"}</div>` : ""}`,
             foot: done
                 ? [{ label: "Close" },
                    ...(d.bill && d.bill.invoice_no ? [{ label: "Print invoice", onClick: () => { window.open(invoiceUrl(d.bill.name), "_blank"); } }] : []),
@@ -187,6 +230,7 @@
                    ...(d.referral ? [{ label: "Print referral letter", onClick: () => { window.open(letterUrl(d.visit), "_blank"); } }] : []),
                    ...(d.sick_sheet ? [{ label: "Print sick sheet", cls: "btn--primary", onClick: () => { window.open(sheetUrl(d.visit), "_blank"); } }] : [])]
                 : [{ label: "Close" }, ...(d.referral ? [{ label: "Print referral letter", onClick: () => { window.open(letterUrl(d.visit), "_blank"); } }] : []), { label: "Save", onClick: (hh) => submit(hh, 0) },
+                   ...(d.can_waive ? [{ label: "Waive fees", cls: "btn--warn", onClick: async (hh) => { if (!(currentTotal > 0)) return toast("There are no fees to waive", "warn"); const w = await askWaiver(currentTotal, p.full_name); if (w) await submit(hh, 1, w); } }] : []),
                    { label: invoiceMode ? "Issue invoice & dispense ✓" : "Take payment & dispense ✓", cls: "btn--primary", onClick: (hh) => submit(hh, 1) }],
         });
         if (done) return;
@@ -221,20 +265,20 @@
             recalc();
         }
 
-        async function submit(hh, finalise) {
+        async function submit(hh, finalise, waiver) {
             const items = collect();
             const notes = read(hh.body).notes;
             if (finalise) {
                 if (items.every((i) => !Number(i.dispensed_qty) && !i.not_available)) return toast("Enter the quantities dispensed", "warn");
                 const short = items.filter((i) => !i.not_available && Number(i.dispensed_qty) < Number(d.items.find((x) => x.name === i.name).prescribed_qty));
                 if (short.length && !confirm(`${short.length} item(s) are being dispensed below the prescribed quantity. Continue?`)) return;
-                if (!invoiceMode && currentTotal > 0 && Number(read(hh.body).pay_amount || 0) < currentTotal) return toast(`Amount received is less than the total due (${money(currentTotal)})`, "warn");
+                if (!waiver && !invoiceMode && currentTotal > 0 && Number(read(hh.body).pay_amount || 0) < currentTotal) return toast(`Amount received is less than the total due (${money(currentTotal)})`, "warn");
             }
-            const r = await call("pharmacy.dispense", { name, items, notes, submit: finalise, payment: !invoiceMode && finalise ? paymentValues(hh.body) : null });
+            const r = await call("pharmacy.dispense", { name, items, notes, submit: finalise, payment: waiver || (!invoiceMode && finalise ? paymentValues(hh.body) : null) });
             hh.close();
             loadAll();
             if (!finalise) return toast("Saved");
-            toast(r.document === "invoice" ? "Invoice issued and dispensed. Visit completed." : r.bill ? "Paid and dispensed. Visit completed." : "Dispensed. Visit completed.");
+            toast(r.document === "invoice" ? "Invoice issued and dispensed. Visit completed." : waiver ? "Fees waived and dispensed. Visit completed." : r.bill ? "Paid and dispensed. Visit completed." : "Dispensed. Visit completed.");
             if (r.bill || r.sick_sheet || r.referral) printDialog({ patient: p.full_name, bill: r.bill, document: r.document, visit: r.visit, sickSheet: r.sick_sheet, referral: r.referral });
         }
     }
@@ -250,7 +294,14 @@
             body: `${banner(d.patient_card)}${billPanel(d.bill ? d.bill.lines : [], total)}<div style="margin-top:16px">${invoiceMode
                 ? `<div class="liveinfo" style="background:var(--info-bg);color:var(--info)">Charged to <b>${esc(d.employer || "the employer")}</b> on an invoice. The employee takes it back to the farm, which pays later.</div>`
                 : paymentFields(total)}</div>`,
-            foot: [{ label: "Close" }, ...(d.referral ? [{ label: "Print referral letter", onClick: () => { window.open(letterUrl(visit), "_blank"); } }] : []), { label: invoiceMode ? "Issue invoice ✓" : "Take payment ✓", cls: "btn--primary", onClick: async (hh) => {
+            foot: [{ label: "Close" }, ...(d.referral ? [{ label: "Print referral letter", onClick: () => { window.open(letterUrl(visit), "_blank"); } }] : []),
+                ...(d.can_waive && total > 0 ? [{ label: "Waive fees", cls: "btn--warn", onClick: async (hh) => {
+                    const w = await askWaiver(total, d.patient_card.full_name); if (!w) return;
+                    const r = await call("pharmacy.take_payment", { visit, payment: w });
+                    hh.close(); loadAll(); toast("Fees waived. Visit completed.");
+                    printDialog({ patient: d.patient_card.full_name, bill: r.bill, document: r.document, visit, sickSheet: r.sick_sheet, referral: r.referral });
+                } }] : []),
+                { label: invoiceMode ? "Issue invoice ✓" : "Take payment ✓", cls: "btn--primary", onClick: async (hh) => {
                 let r;
                 if (invoiceMode) r = await call("pharmacy.issue_invoice", { visit });
                 else {

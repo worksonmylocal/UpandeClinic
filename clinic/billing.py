@@ -140,9 +140,11 @@ def desired_lines(visit):
 	purpose = frappe.db.get_value("Clinic Visit", visit, "visit_purpose")
 	consultation = frappe.db.get_value("Clinic Visit", visit, "consultation")
 	if consultation:
-		kind = frappe.db.get_value("Clinic Consultation", consultation, "consultation_type") or "Consultation"
+		kind, ccc = frappe.db.get_value("Clinic Consultation", consultation, ["consultation_type", "ccc_client"]) or (None, 0)
+		kind = kind or "Consultation"
 		label = _("Consultation fee") if kind == "Consultation" else _(kind)
-		lines[("Clinic Consultation", consultation)] = ("Consultation", label, 1, consultation_price(kind))
+		if not ccc:  # CCC clients get their HIV care elsewhere: no consultation fee
+			lines[("Clinic Consultation", consultation)] = ("Consultation", label, 1, consultation_price(kind))
 	attendance_name = frappe.db.get_value("Clinic Visit", visit, "attendance")
 	procedures = procedure_prices()
 	if consultation:
@@ -270,6 +272,7 @@ def summary(visit):
 		"drug_total": flt(bill.drug_total),
 		"receipt_no": bill.receipt_no,
 		"invoice_no": bill.invoice_no,
+		"waived": bill.waived,
 		"lines": [
 			{"item_type": r.item_type, "description": r.description, "qty": flt(r.qty), "rate": flt(r.rate), "amount": flt(r.amount)}
 			for r in bill.items
@@ -300,6 +303,42 @@ def pay(visit, mode, amount, reference=None):
 	bill.amount_paid = amount if total > 0 else 0
 	bill.change_amount = max(amount - total, 0) if total > 0 else 0
 	bill.payment_reference = reference
+	bill.paid_on = now_datetime()
+	bill.received_by = frappe.session.user
+	bill.receipt_no = make_autoname("REC-.YYYY.-.#####")
+	return _save(bill)
+
+
+def waive(visit, reason, manager_pin):
+	"""Cash patient who cannot pay: the Clinic Manager signs the waiver off with their screen-lock PIN and the bill drops to nothing."""
+	from clinic.api.lock import verify_pin
+
+	bill = get_bill(visit)
+	if not bill:
+		frappe.throw(_("There is no bill for this visit"))
+	if bill.status != "Open":
+		frappe.throw(_("This bill is already {0}").format(bill.status))
+	if bill.billing_mode != "Cash":
+		frappe.throw(_("Only a cash patient's bill can be waived. Farm bills are invoiced to the employer."))
+	reason = (reason or "").strip()
+	if not reason:
+		frappe.throw(_("Give the reason for waiving the fees"))
+	manager = frappe.db.get_single_value("Clinic Settings", "clinic_manager")
+	if not manager:
+		frappe.throw(_("No Clinic Manager is set in Clinic Settings, so fees cannot be waived yet."))
+	verify_pin(manager, manager_pin)
+	bill = rebuild(bill)
+	if flt(bill.total) <= 0:
+		frappe.throw(_("There is nothing to waive"))
+	bill.waived = 1
+	bill.waived_amount = flt(bill.total)
+	bill.waiver_reason = reason
+	bill.waived_by = manager
+	bill.waived_on = now_datetime()
+	bill.status = "Paid"
+	bill.payment_mode = "Waived"
+	bill.amount_paid = 0
+	bill.change_amount = 0
 	bill.paid_on = now_datetime()
 	bill.received_by = frappe.session.user
 	bill.receipt_no = make_autoname("REC-.YYYY.-.#####")

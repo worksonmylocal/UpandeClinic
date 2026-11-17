@@ -75,3 +75,20 @@ def unlock(pin):
 	frappe.cache.set_value(_key("tries", user), tries + 1, expires_in_sec=LOCKOUT_SECONDS)
 	left = MAX_TRIES - tries - 1
 	frappe.throw(_("Wrong PIN.") + (" " + _("{0} tries left.").format(left) if left > 0 else " " + _("Locked for five minutes.")))
+
+
+def verify_pin(user, pin, scope="waiver"):
+	"""Check another person's screen-lock PIN (a manager signing something off). Throttled per requester so it cannot be guessed."""
+	requester = frappe.session.user
+	key = _key("verify_tries_" + scope, requester)
+	tries = frappe.cache.get_value(key) or 0
+	if tries >= MAX_TRIES:
+		frappe.throw(_("Too many wrong PINs. Wait five minutes and try again."))
+	expected = _pin(user) if user else None
+	if not expected:
+		frappe.throw(_("The Clinic Manager has no screen-lock PIN set up, so this cannot be authorised."))
+	if not hmac.compare_digest(str(pin or "").strip(), str(expected)):
+		frappe.cache.set_value(key, tries + 1, expires_in_sec=LOCKOUT_SECONDS)
+		left = MAX_TRIES - tries - 1
+		frappe.throw(_("Wrong Clinic Manager PIN.") + (" " + _("{0} tries left.").format(left) if left > 0 else " " + _("Locked for five minutes.")))
+	frappe.cache.delete_value(key)
