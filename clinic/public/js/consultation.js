@@ -796,9 +796,9 @@
             ${unsent ? '<button class="btn btn--signal" id="a-lab">Send to Lab →</button>' : ""}
             ${hasRx ? `<button class="btn ${unsent ? "" : "btn--primary"}" id="a-rx">Send to Pharmacy →</button>`
                 : `<button class="btn ${unsent ? "" : "btn--primary"}" id="a-done">Complete consultation ✓</button>`}
-            <div class="actionbar__row2">${hts === "Done" ? '<span class="pill good">HTS done</span>'
+            <span class="actionbar__hts">${hts === "Done" ? '<span class="pill good">HTS done</span>'
                 : hts === "Sent" ? '<span class="pill info">At the HTS clinic</span>'
-                : '<button class="btn btn--signal" id="a-hts" type="button">Send to HTS →</button>'}</div>`;
+                : '<button class="btn btn--signal" id="a-hts" type="button">Send to HTS →</button>'}</span>`;
         $("#a-hts")?.addEventListener("click", async () => {
             if (state.lab.some((r) => !r.lab_test)) return toast("Send the new lab requests first, or remove them.", "warn");
             const ok = await new Promise((resolve) => modal({

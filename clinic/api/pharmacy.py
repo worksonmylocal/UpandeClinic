@@ -215,8 +215,8 @@ def get_dispensing(name):
 
 
 def _can_waive(terms):
-	"""Cash patients can have their fees waived once a Clinic Manager is named in Clinic Settings."""
-	return terms["billing_mode"] == "Cash" and bool(frappe.db.get_single_value("Clinic Settings", "clinic_manager"))
+	"""Cash patients can have their fees waived; billing.waive explains if no Clinic Manager is set up yet."""
+	return terms["billing_mode"] == "Cash"
 
 
 def _payment_args(payment):
