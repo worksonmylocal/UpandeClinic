@@ -111,7 +111,7 @@
         : r.refer_out ? pill("Referred out", "warn") : pill("Treated", "good"));
 
     // "Download file": the doctor chooses between this encounter and the patient's entire file
-    const fileCell = (r) => `<td class="num"><button class="btn btn--sm" data-file="${esc(r.consultation)}" data-patient="${esc(r.patient_name)}" data-when="${esc(dateOf(r.consultation_date))}">Download file</button></td>`;
+    const fileCell = (r) => `<td class="num">${r.refer_out && r.visit ? `<a class="btn btn--sm btn--signal" target="_blank" href="/clinic/referral_letter?visit=${encodeURIComponent(r.visit)}">Referral Letter</a> ` : ""}<button class="btn btn--sm" data-file="${esc(r.consultation)}" data-patient="${esc(r.patient_name)}" data-when="${esc(dateOf(r.consultation_date))}">Download file</button></td>`;
     function bindFiles(root) {
         $$("[data-file]", root).forEach((b) => b.addEventListener("click", () => chooseFile(b.dataset.file, b.dataset.patient, b.dataset.when)));
     }
