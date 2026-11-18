@@ -87,7 +87,7 @@
                 ${d.items.map((r) => `<tr><td><b style="color:var(--ink)">${esc(r.drug_name || r.drug)}</b>
                     ${r.route && r.route !== "Oral" ? `<br><span class="printnote">${esc(r.route)}</span>` : ""}${r.instructions ? `<br><span class="printnote">${esc(r.instructions)}</span>` : ""}</td>
                     <td>${esc(r.dose || "")}</td><td>${esc(r.frequency || "")}</td><td>${r.duration_days || ""}</td>
-                    <td>${r.prescribed_qty} ${esc(r.uom || "")}${done ? "" : `<br><span class="printnote">${num(d.stock[r.drug] || 0)} on shelf</span>`}</td>
+                    <td>${r.prescribed_qty} ${esc(r.uom || "")}${done ? "" : `<br><span class="printnote">${(d.unbilled || []).includes(r.drug) ? "Not billed to the patient" : num(d.stock[r.drug] || 0) + " on shelf"}</span>`}</td>
                     <td>${done ? (r.not_available ? pill("Buy externally", "warn") : `<b>${r.dispensed_qty}</b>`) : `<input type="number" min="0" step="any" data-item="${esc(r.name)}" value="${r.dispensed_qty}">`}</td>
                     ${done ? "" : `<td><input type="checkbox" data-na="${esc(r.name)}" ${r.not_available ? "checked" : ""} style="width:18px;height:18px"></td>`}</tr>`).join("")}</table>
                 ${done ? "" : '<div class="printnote" style="margin-top:8px">Tick <b>Not in stock</b> when the drug is unavailable: the patient is told to buy it from a pharmacy of their choice.</div>'}

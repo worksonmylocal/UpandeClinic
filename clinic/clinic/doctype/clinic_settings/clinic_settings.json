@@ -19,6 +19,8 @@
 		"biometric_section",
 		"biometric_device_id",
 		"biometric_staff",
+		"billing_section",
+		"unbilled_items",
 		"section_2",
 		"po_box",
 		"head_office",
@@ -175,6 +177,18 @@
 			"label": "Clinic Staff Using This Device",
 			"options": "Clinic Biometric Staff",
 			"description": "Staff who work at the clinic and are never patients (for example the doctor). Their punches on this device are not clinic visits: they stay out of the clinic Attendance tab and go to HR attendance as usual."
+		},
+		{
+			"fieldname": "billing_section",
+			"fieldtype": "Section Break",
+			"label": "Pharmacy Billing"
+		},
+		{
+			"fieldname": "unbilled_items",
+			"fieldtype": "Table",
+			"label": "Items Not Billed to the Patient",
+			"options": "Clinic Unbilled Item",
+			"description": "Shared items such as a spray used on many patients (for example Deep Heat). Dispensing one is recorded in the patient's history but takes nothing off the shelf and adds no cost to the patient. Write off the can from stock when it is finished."
 		}
 	],
 	"links": [],

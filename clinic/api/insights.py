@@ -9,6 +9,7 @@ import frappe
 from frappe.utils import add_months, flt, get_first_day, get_last_day, getdate, nowdate
 
 from clinic import attendance as bio
+from clinic import stock
 from clinic.api import attendance as att
 from clinic.api import stockreports
 from clinic.api.common import require
@@ -310,6 +311,8 @@ def _cost(s):
 		_params(s),
 		as_dict=True,
 	)
+	skip = stock.unbilled_items()
+	rows = [r for r in rows if r.drug not in skip]  # shared items are not a cost to the patient
 	rates = _item_rates({r.drug for r in rows})
 	for r in rows:
 		rate, group = rates.get(r.drug, (0, None))

@@ -49,6 +49,11 @@ def ensure_warehouse():
 	return name
 
 
+def unbilled_items():
+	"""Items that are shared between patients and so are never charged to one: the list in Clinic Settings."""
+	return set(frappe.get_all("Clinic Unbilled Item", filters={"parent": "Clinic Settings"}, pluck="item"))
+
+
 def on_hand(items):
 	"""{item: quantity on the pharmacy shelf}."""
 	warehouse = pharmacy_warehouse()
@@ -62,6 +67,7 @@ def on_hand(items):
 
 def reserved(items, exclude_consultation=None):
 	"""{item: quantity prescribed to patients still waiting at the pharmacy (not dispensed yet)}."""
+	items = [i for i in (items or []) if i not in unbilled_items()]
 	if not items:
 		return {}
 	rows = frappe.db.sql(
@@ -85,7 +91,8 @@ def available(items, exclude_consultation=None):
 
 def issue_dispensed(dispensing):
 	"""Take what the pharmacist handed out off the shelf (Stock Entry: Material Issue)."""
-	lines = [r for r in dispensing.items if flt(r.dispensed_qty) > 0 and not r.not_available]
+	skip = unbilled_items()
+	lines = [r for r in dispensing.items if flt(r.dispensed_qty) > 0 and not r.not_available and r.drug not in skip]
 	if not lines:
 		return
 	warehouse = pharmacy_warehouse()

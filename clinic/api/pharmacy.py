@@ -117,6 +117,7 @@ def get_dispensing(name):
 		"Clinic Consultation Diagnosis", filters={"parent": doc.consultation}, pluck="diagnosis"
 	)
 	data["stock"] = stock.on_hand([i.drug for i in doc.items])
+	data["unbilled"] = sorted(stock.unbilled_items() & {i.drug for i in doc.items})
 	data["weight_kg"] = frappe.db.get_value(
 		"Clinic Triage", frappe.db.get_value("Clinic Visit", doc.visit, "triage"), "weight_kg"
 	)
