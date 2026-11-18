@@ -10,6 +10,7 @@ from frappe.utils import add_months, flt, get_first_day, get_last_day, getdate, 
 
 from clinic import attendance as bio
 from clinic.api import attendance as att
+from clinic.api import stockreports
 from clinic.api.common import require
 
 VIEWS = ("overview", "health", "visits", "sickoff", "cost", "investigations", "accidents")
@@ -450,7 +451,7 @@ def _departments():
 @frappe.whitelist()
 def dashboard(view="overview", year=None, month=None, from_date=None, to_date=None, department=None):
 	require("insights")
-	if view not in _BUILDERS:
+	if view != "stock" and view not in _BUILDERS:
 		frappe.throw(f"Unknown view {view}")
 	s = _scope(year, month, from_date, to_date, department)
 	years = frappe.db.sql("SELECT DISTINCT YEAR(consultation_date) FROM `tabClinic Consultation` WHERE consultation_date IS NOT NULL ORDER BY 1 DESC", pluck=True)
@@ -462,7 +463,8 @@ def dashboard(view="overview", year=None, month=None, from_date=None, to_date=No
 			"departments": _departments(),
 			"range": {"from": str(s.start), "to": str(s.end)},
 		},
-		"data": _BUILDERS[view](s),
+		# The stock balance is a moment, not a period: now, or the end of the "To" day when one is picked
+		"data": stockreports.stock_balance(to_date) if view == "stock" else _BUILDERS[view](s),
 	}
 
 

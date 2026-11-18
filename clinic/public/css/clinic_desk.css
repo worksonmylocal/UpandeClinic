@@ -602,3 +602,14 @@ body.il-open{overflow:hidden}
 .qcard--link{cursor:pointer}
 .qcard--link:hover{box-shadow:var(--shadow-hover)}
 .stage{font:600 11px var(--sans);padding:3px 10px;border-radius:999px;white-space:nowrap}
+
+/* Reports page: one row per report with its period picker and Download button */
+.rep-list{display:flex;flex-direction:column;gap:10px}
+.rep{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:18px;align-items:center;padding:14px 18px;border-radius:16px;background:var(--surface);border:1px solid var(--hairline);border-left:4px solid var(--c,#228883);transition:box-shadow .15s,transform .15s}
+.rep:hover{box-shadow:0 6px 20px rgba(10,10,10,.08);transform:translateY(-1px)}
+.rep__main b{display:block;font:600 14px var(--sans);color:var(--ink)}
+.rep__main span{display:block;font:400 12px var(--sans);color:var(--ink-mute);margin-top:3px;line-height:1.45}
+.rep__fields{display:flex;gap:10px}
+.rep__fields .field{min-width:130px}
+.rep__go{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+@media (max-width:820px){.rep{grid-template-columns:1fr}.rep__fields{flex-wrap:wrap}}

@@ -164,6 +164,27 @@
             csv: (d) => [["Drug group", "Items", "Cost", "Share %"], ...d.by_group.map((r) => [r.group, r.items, r.cost, r.percent]), [], ["Employee", "Staff no.", "Department", "Visits", "Cost"], ...d.top_employees.map((r) => [r.employee_name, r.staff_no || "", r.department || "", r.visits, r.cost])],
         },
 
+        stock: {
+            label: "Stock Balance",
+            render(d) {
+                const rows = d.rows.map((r) => `<tr><td><b>${esc(r.item_name)}</b></td><td>${esc(r.group || "")}</td><td>${esc(r.uom || "")}</td><td class="num"${r.qty <= 0 ? ' style="color:var(--bad);font-weight:600"' : r.qty <= 10 ? ' style="color:var(--warn);font-weight:600"' : ""}>${num(r.qty)}</td><td class="num">${r.rate ? "KES " + r.rate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}</td><td class="num">${money(r.value)}</td></tr>`);
+                return `<div class="kpi-grid" id="st-kpis"></div>
+                    <div class="card"><div class="card__head"><h3>Stock on the Shelf</h3><span class="meta">${d.live ? "Right now" : "As at"} · ${esc(dateOf(d.as_of))} ${esc(timeOf(d.as_of))} · ${esc(d.warehouse)} · set a <b>To</b> date above to see a past day</span></div>
+                    ${d.rows.length ? `<div class="tscroll"><table class="dtable"><tr><th>Item</th><th>Group</th><th>Unit</th><th class="num">In stock</th><th class="num">Unit cost</th><th class="num">Value</th></tr>${rows.join("")}</table></div>` : empty("Nothing is held in the pharmacy yet.")}</div>`;
+            },
+            afterRender(d) {
+                const k = d.kpis;
+                kpis($("#st-kpis"), [
+                    { label: "Items Held", value: num(k.items), cls: "good" },
+                    { label: "In Stock", value: num(k.in_stock) },
+                    { label: "Running Low", value: num(k.low), cls: k.low ? "warn" : "", unit: "10 or fewer" },
+                    { label: "Out of Stock", value: num(k.out_of_stock), cls: k.out_of_stock ? "bad" : "" },
+                    { label: "Stock Value", value: money(k.value) },
+                ]);
+            },
+            csv: (d) => [["Item", "Group", "Unit", "In stock", "Unit cost", "Value"], ...d.rows.map((r) => [r.item_name, r.group || "", r.uom || "", r.qty, r.rate, r.value]), ["", "", "", "", "Total", d.kpis.value]],
+        },
+
         investigations: {
             label: "Investigations",
             render(d) {

@@ -14,6 +14,7 @@ PAGE_ROLES = {
 	"attendance": ["Clinic Receptionist", "Clinic Nurse", "Clinic Doctor"],
 	"insights": ["Clinic Doctor"],
 	"firstaid": ["Clinic First Aider"],
+	"reports": ["Clinic Doctor", "Clinic Pharmacist"],
 }
 
 ADMIN_ROLES = ["Clinic Manager"]
