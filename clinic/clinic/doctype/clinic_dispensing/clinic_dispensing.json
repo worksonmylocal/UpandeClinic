@@ -13,6 +13,7 @@
 		"column_26",
 		"dispensed_on",
 		"pharmacist",
+		"stock_entry",
 		"section_27",
 		"items",
 		"notes",
@@ -110,10 +111,19 @@
 			"read_only": 1,
 			"no_copy": 1,
 			"print_hide": 1
+		},
+		{
+			"fieldname": "stock_entry",
+			"fieldtype": "Link",
+			"label": "Stock Entry",
+			"options": "Stock Entry",
+			"read_only": 1,
+			"no_copy": 1,
+			"description": "The store issue that took these drugs out of stock"
 		}
 	],
 	"links": [],
-	"modified": "2026-09-30 16:00:30.727868",
+	"modified": "2026-11-18 09:00:00.000000",
 	"modified_by": "Administrator",
 	"module": "Clinic",
 	"name": "Clinic Dispensing",

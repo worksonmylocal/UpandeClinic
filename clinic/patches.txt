@@ -21,3 +21,4 @@ clinic.patches.seed_employers
 clinic.patches.reseed_masters
 clinic.patches.remove_hiv_lab_test
 clinic.patches.update_urinalysis_and_sat
+clinic.patches.set_clinic_store_warehouse
