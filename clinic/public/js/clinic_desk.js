@@ -626,9 +626,80 @@ window.Desk = (function () {
         return h;
     }
 
+    // Popup for a dependant: which farm pays, who the employee is. Resolves with the details, or null when cancelled.
+    function dependantPopup(current, employers, genders) {
+        return new Promise((resolve) => {
+            const dep = { farm: current?.farm || "", relationship: current?.relationship || "", parent: current?.parent || null };
+            const usesRecords = () => !!(employers.find((e) => e.name === dep.farm) || {}).uses_employee_records;
+            let done = false;
+            const finish = (v, hh) => { done = true; hh && hh.close(); resolve(v); };
+            const h = modal({
+                title: "Dependant",
+                sub: "The employee's farm is billed. The patient is still seen as themselves.",
+                body: `<div class="grid-2">
+                    <div class="field"><label>Farm the employee works for <span class="req">*</span></label>
+                        <select id="dp-farm"><option value="">Select the farm</option>${employers.map((e) => `<option ${e.name === dep.farm ? "selected" : ""}>${esc(e.name)}</option>`).join("")}</select></div>
+                    <div class="field"><label>Relationship to the employee</label>
+                        <select id="dp-rel">${["", "Spouse", "Son", "Daughter", "Parent", "Sibling", "Other"].map((o) => `<option ${o === dep.relationship ? "selected" : ""}>${o}</option>`).join("")}</select></div>
+                </div>
+                <div id="dp-parent" style="margin-top:12px"></div>`,
+                foot: [
+                    { label: "Cancel", onClick: (hh) => finish(null, hh) },
+                    { label: "Save dependant", cls: "btn--primary", onClick: (hh) => {
+                        if (!dep.farm) return toast("Select the farm the employee works for", "warn");
+                        if (!dep.parent) return toast("Select the employee this patient is a dependant of", "warn");
+                        finish({ ...dep }, hh);
+                    } },
+                ],
+                onClose: () => { if (!done) resolve(null); },
+            });
+            const area = $("#dp-parent", h.body);
+            const drawParent = () => {
+                if (!dep.farm) { area.innerHTML = '<div class="printnote">Choose the farm first.</div>'; return; }
+                const chosenLine = dep.parent ? `<div class="liveinfo" style="margin-top:8px">Employee: <b>${esc(dep.parent.name)}</b>${dep.parent.detail ? " · " + esc(dep.parent.detail) : ""}</div>` : "";
+                area.innerHTML = `<div class="field"><label>Employee <span class="req">*</span></label>
+                    <input class="input" id="dp-q" placeholder="${usesRecords() ? "Employee name, number or phone" : "Search employees of " + esc(dep.farm) + " already registered"}" autocomplete="off">
+                    ${chosenLine}</div>
+                    ${usesRecords() ? "" : '<button class="btn btn--sm" id="dp-add" type="button" style="margin-top:8px">Employee not listed? Add them</button>'}`;
+                suggest($("#dp-q", area), usesRecords() ? {
+                    fetch: (q) => call("common.search_employees", { q }, { quiet: true }),
+                    render: (e) => ({ main: e.employee_name, sub: `${e.name} · ${e.department || ""}` }),
+                    onPick: (e) => { dep.parent = { employee: e.name, name: e.employee_name, detail: e.department || e.name }; drawParent(); },
+                } : {
+                    fetch: (q) => call("common.search_farm_employees", { farm: dep.farm, q }, { quiet: true }),
+                    render: (e) => ({ main: e.full_name, sub: [e.staff_no, e.phone, e.name].filter(Boolean).join(" · ") }),
+                    onPick: (e) => { dep.parent = { patient: e.name, name: e.full_name, detail: e.staff_no || e.name }; drawParent(); },
+                });
+                $("#dp-add", area)?.addEventListener("click", () => addParent());
+            };
+            const addParent = () => {
+                const m2 = modal({
+                    title: "Add employee of " + dep.farm,
+                    body: `<div class="grid-2">
+                        ${field("ap_name", "Full name", { required: true })}
+                        ${field("ap_staff", "Staff / payroll no.")}
+                        ${field("ap_phone", "Phone")}
+                        ${field("ap_id", "National ID / Passport")}
+                        ${field("ap_sex", "Sex", { type: "select", options: ["", ...genders.filter((g) => ["Male", "Female", "Other"].includes(g))] })}
+                    </div>`,
+                    foot: [{ label: "Cancel" }, { label: "Add employee", cls: "btn--primary", onClick: async (hh) => {
+                        const v = read(m2.body);
+                        if (!(v.ap_name || "").trim()) return toast("Enter the employee's name", "warn");
+                        const r = await call("common.add_parent_employee", { farm: dep.farm, full_name: v.ap_name, staff_no: v.ap_staff, phone: v.ap_phone, national_id: v.ap_id, sex: v.ap_sex });
+                        dep.parent = { patient: r.name, name: r.full_name, detail: v.ap_staff || r.name };
+                        hh.close(); toast(r.full_name + " added"); drawParent();
+                    } }],
+                });
+            };
+            $("#dp-farm", h.body).addEventListener("change", (e) => { dep.farm = e.target.value; dep.parent = null; drawParent(); });
+            $("#dp-rel", h.body).addEventListener("change", (e) => { dep.relationship = e.target.value; });
+            drawParent();
+        });
+    }
+
     function renderNewPatientForm(form, m, chosen) {
         const employers = m.employers || [];
-        let type = "Community Member", employee = null;
+        let type = "Community Member", employee = null, dep = null;
         let employer = (employers.find((e) => e.uses_employee_records) || employers[0] || {}).name;
         const usesRecords = () => !!(employers.find((e) => e.name === employer) || {}).uses_employee_records;
         const keepValues = (keep) => Object.entries(keep).forEach(([k, v]) => { const el = $(`[data-f=${k}]`, form); if (el && v && !el.value) el.value = v; });
@@ -660,7 +731,13 @@ window.Desk = (function () {
                 ${type === "Community Member" ? `<div class="grid-3">
                     ${field("village", "Village / Location")}
                     ${field("next_of_kin", "Next of kin")}
-                    ${field("next_of_kin_phone", "Next of kin phone")}</div>` : ""}
+                    ${field("next_of_kin_phone", "Next of kin phone")}</div>
+                <div class="cccbar ${dep ? "on" : ""}" id="pp-depbar" style="margin:6px 0 14px">
+                    <label class="cccbox"><input type="checkbox" id="pp-dep" ${dep ? "checked" : ""}><span class="cccbox__mark"></span>
+                        <span class="cccbox__text"><b>Is dependant</b><small>${dep
+                            ? `Billed to <b>${esc(dep.farm)}</b> · ${esc(dep.relationship || "dependant")} of <b>${esc(dep.parent.name)}</b> &nbsp;<a href="#" id="pp-dep-edit">Change</a>`
+                            : "Tick for the child, spouse or relative of a farm employee. The employee's farm is billed; the patient is still seen as themselves."}</small></span></label>
+                </div>` : ""}
                 <div class="grid-3">
                     ${field("allergies", "Known allergies", { type: "textarea", rows: 2 })}
                     ${field("chronic_conditions", "Chronic conditions", { type: "textarea", rows: 2 })}
@@ -668,8 +745,19 @@ window.Desk = (function () {
                 </div>
                 <div style="text-align:right"><button class="btn btn--primary" id="pp-save">Register &amp; continue</button></div>`;
             $$("[data-t]", form).forEach((b) => b.addEventListener("click", () => {
-                const keep = read(form); type = b.dataset.t; employee = null; draw(); keepValues(keep);
+                const keep = read(form); type = b.dataset.t; employee = null; if (type !== "Community Member") dep = null; draw(); keepValues(keep);
             }));
+            const askDependant = async () => {
+                const keep = read(form);
+                const got = await dependantPopup(dep, employers, m.genders);
+                if (got) dep = got;
+                draw(); keepValues(keep);
+            };
+            $("#pp-dep", form)?.addEventListener("change", async (e) => {
+                if (e.target.checked) await askDependant();
+                else { const keep = read(form); dep = null; draw(); keepValues(keep); }
+            });
+            $("#pp-dep-edit", form)?.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); askDependant(); });
             const empSel = $("#pp-employer", form);
             if (empSel) empSel.addEventListener("change", () => { const keep = read(form); employer = empSel.value; employee = null; draw(); keepValues(keep); });
             if (fromList) {
@@ -696,7 +784,11 @@ window.Desk = (function () {
                 delete v.age_years;
                 btn.disabled = true;
                 try {
-                    const p = await call("common.register_patient", { data: { ...v, patient_type: type, employer: type === "Employee" ? employer : null, employee: employee?.name } });
+                    const depData = type === "Community Member" && dep ? {
+                        is_dependant: 1, dependant_farm: dep.farm, dependant_relationship: dep.relationship || null,
+                        parent_employee: dep.parent.employee || null, parent_patient: dep.parent.patient || null,
+                    } : {};
+                    const p = await call("common.register_patient", { data: { ...v, ...depData, patient_type: type, employer: type === "Employee" ? employer : null, employee: employee?.name } });
                     toast("Patient registered: " + p.name);
                     await chosen(p);
                 } catch (e) { btn.disabled = false; }

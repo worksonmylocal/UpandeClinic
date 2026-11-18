@@ -253,10 +253,35 @@ def register_patient(data):
 		"patient_type", "employer", "employee", "staff_no", "section", "full_name", "sex", "date_of_birth", "national_id", "phone",
 		"village", "next_of_kin", "next_of_kin_relationship", "next_of_kin_phone",
 		"blood_group", "allergies", "chronic_conditions",
+		"is_dependant", "dependant_farm", "dependant_relationship", "parent_employee", "parent_patient",
 	]
 	doc = frappe.get_doc({"doctype": "Clinic Patient", **pick(data, fields)})
 	doc.insert()
 	return patient_card(doc.name)
+
+
+@frappe.whitelist()
+def search_farm_employees(farm, q=""):
+	"""Employees of another farm already registered here, for linking a dependant to their parent."""
+	require_any_clinic_role()
+	like = f"%{(q or '').strip()}%"
+	return frappe.db.sql(
+		"""SELECT name, full_name, staff_no, phone FROM `tabClinic Patient`
+		WHERE patient_type = 'Employee' AND employer = %(farm)s
+			AND (full_name LIKE %(like)s OR staff_no LIKE %(like)s OR phone LIKE %(like)s OR name LIKE %(like)s)
+		ORDER BY full_name LIMIT 15""",
+		{"farm": farm, "like": like},
+		as_dict=True,
+	)
+
+
+@frappe.whitelist()
+def add_parent_employee(farm, full_name, staff_no=None, phone=None, national_id=None, sex=None):
+	"""Register an employee of another farm on the spot so a dependant can be linked to them."""
+	require_any_clinic_role()
+	from clinic.clinic.doctype.clinic_patient.clinic_patient import add_parent_employee as add
+
+	return add(farm, full_name, staff_no, phone, national_id, sex)
 
 
 @frappe.whitelist()
