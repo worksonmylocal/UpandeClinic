@@ -102,7 +102,11 @@ def terms_for_patient(patient, purpose=None):
 	farm = medical_farm(purpose)
 	if farm:
 		return {"billing_mode": "Invoice", "sick_sheet": False, "employer": farm}
-	p = frappe.db.get_value("Clinic Patient", patient, ["patient_type", "employer"], as_dict=True)
+	p = frappe.db.get_value("Clinic Patient", patient, ["patient_type", "employer", "is_dependant", "dependant_farm"], as_dict=True)
+	if p.patient_type == "Community Member" and p.is_dependant and p.dependant_farm:
+		# a dependant is seen as themselves, but the employee's farm carries the bill
+		farm = frappe.db.get_value("Clinic Employer", p.dependant_farm, "billed_at_clinic")
+		return {"billing_mode": "Invoice" if farm else "Cash", "sick_sheet": False, "employer": p.dependant_farm if farm else None}
 	employer = (
 		frappe.db.get_value("Clinic Employer", p.employer, ["requires_sick_sheet", "billed_at_clinic"], as_dict=True)
 		if p.employer

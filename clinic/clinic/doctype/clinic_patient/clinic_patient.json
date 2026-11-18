@@ -9,6 +9,12 @@
 		"employee",
 		"staff_no",
 		"section",
+		"is_dependant",
+		"dependant_farm",
+		"dependant_relationship",
+		"parent_employee",
+		"parent_patient",
+		"parent_name",
 		"employer_uses_employee_records",
 		"requires_sick_sheet",
 		"billed_at_clinic",
@@ -214,10 +220,59 @@
 			"fieldname": "chronic_conditions",
 			"fieldtype": "Small Text",
 			"label": "Chronic Conditions"
+		},
+		{
+			"fieldname": "is_dependant",
+			"fieldtype": "Check",
+			"label": "Is Dependant",
+			"depends_on": "eval:doc.patient_type=='Community Member'",
+			"in_standard_filter": 1,
+			"description": "Tick when the patient is a dependant (e.g. child or spouse) of a farm employee. Their bills go to the employee's farm."
+		},
+		{
+			"fieldname": "dependant_farm",
+			"fieldtype": "Link",
+			"label": "Parent's Farm",
+			"options": "Clinic Employer",
+			"depends_on": "eval:doc.patient_type=='Community Member' && doc.is_dependant",
+			"read_only": 1,
+			"search_index": 1,
+			"in_standard_filter": 1
+		},
+		{
+			"fieldname": "dependant_relationship",
+			"fieldtype": "Select",
+			"label": "Relationship to Employee",
+			"options": "\nSpouse\nSon\nDaughter\nParent\nSibling\nOther",
+			"depends_on": "eval:doc.patient_type=='Community Member' && doc.is_dependant",
+			"read_only": 1
+		},
+		{
+			"fieldname": "parent_employee",
+			"fieldtype": "Link",
+			"label": "Employee (Parent / Guardian)",
+			"options": "Employee",
+			"depends_on": "eval:doc.patient_type=='Community Member' && doc.is_dependant && doc.parent_employee",
+			"read_only": 1
+		},
+		{
+			"fieldname": "parent_patient",
+			"fieldtype": "Link",
+			"label": "Employee (Parent / Guardian)",
+			"options": "Clinic Patient",
+			"depends_on": "eval:doc.patient_type=='Community Member' && doc.is_dependant && doc.parent_patient",
+			"read_only": 1
+		},
+		{
+			"fieldname": "parent_name",
+			"fieldtype": "Data",
+			"label": "Employee Name",
+			"depends_on": "eval:doc.patient_type=='Community Member' && doc.is_dependant",
+			"read_only": 1
 		}
 	],
 	"links": [],
-	"modified": "2026-09-30 15:49:23.181683",
+	"modified": "2026-11-18 11:00:00.000000",
 	"modified_by": "Administrator",
 	"module": "Clinic",
 	"name": "Clinic Patient",

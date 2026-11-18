@@ -18,6 +18,7 @@ class ClinicPatient(Document):
 	def validate(self):
 		self.validate_date_of_birth()
 		self.validate_type_fields()
+		self.validate_dependant()
 		self.age = age_text(self.date_of_birth)
 
 	def validate_date_of_birth(self):
@@ -65,3 +66,41 @@ class ClinicPatient(Document):
 			self.village = None
 		else:
 			self.employee = self.department = self.employer = self.staff_no = self.section = None
+
+	def validate_dependant(self):
+		"""A dependant is a community member whose bills go to the farm their parent works for."""
+		if self.patient_type != "Community Member" or not self.is_dependant:
+			self.is_dependant = 0
+			self.dependant_farm = self.dependant_relationship = self.parent_employee = self.parent_patient = self.parent_name = None
+			return
+		if not self.dependant_farm:
+			frappe.throw(_("Select the farm the employee (parent / guardian) works for"))
+		if frappe.db.get_value("Clinic Employer", self.dependant_farm, "uses_employee_records"):
+			if not self.parent_employee:
+				frappe.throw(_("Select the employee this dependant belongs to"))
+			self.parent_patient = None
+			self.parent_name = frappe.db.get_value("Employee", self.parent_employee, "employee_name")
+		else:
+			if not self.parent_patient:
+				frappe.throw(_("Select the employee this dependant belongs to, or add them"))
+			parent = frappe.db.get_value("Clinic Patient", self.parent_patient, ["patient_type", "employer", "full_name"], as_dict=True)
+			if parent.patient_type != "Employee" or parent.employer != self.dependant_farm:
+				frappe.throw(_("{0} is not registered as an employee of {1}").format(parent.full_name, self.dependant_farm))
+			self.parent_employee = None
+			self.parent_name = parent.full_name
+
+
+@frappe.whitelist()
+def add_parent_employee(farm, full_name, staff_no=None, phone=None, national_id=None, sex=None):
+	"""Register an employee of another farm on the spot, so a dependant can be linked to them."""
+	frappe.has_permission("Clinic Patient", "create", throw=True)
+	if frappe.db.get_value("Clinic Employer", farm, "uses_employee_records"):
+		frappe.throw(_("Staff of {0} are picked from the Employee list").format(farm))
+	if not (full_name or "").strip():
+		frappe.throw(_("Enter the employee's name"))
+	doc = frappe.get_doc({
+		"doctype": "Clinic Patient", "patient_type": "Employee", "employer": farm, "full_name": full_name.strip(),
+		"staff_no": (staff_no or "").strip() or None, "phone": phone or None, "national_id": national_id or None, "sex": sex or None,
+	})
+	doc.insert()
+	return {"name": doc.name, "full_name": doc.full_name}
