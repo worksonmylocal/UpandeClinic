@@ -12,7 +12,7 @@
     const CODES = ["M", "A", "O", "x"];
     const NAMES = { M: "Morning shift (till evening)", A: "Afternoon shift (till evening)", O: "Off day", x: "Not on duty" };
     let week = new URLSearchParams(location.search).get("week") || "";
-    let st = null, dirty = false;
+    let st = null, dirty = false, rangeChoice = "1";
 
     const shift = (iso, days) => { const d = new Date(iso + "T00:00:00"); d.setDate(d.getDate() + days); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
     const nice = (iso) => new Date(iso + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
@@ -47,7 +47,11 @@
             <button class="btn btn--sm" id="prev">&larr; Previous week</button>
             <div style="font-weight:600;min-width:260px;text-align:center">${esc(st.label)} &middot; ${esc(nice(st.week_start))} to ${esc(nice(st.week_end))}</div>
             <button class="btn btn--sm" id="next">Next week &rarr;</button>
-            <span style="margin-left:auto" class="meta">${r ? (r.status === "Published" ? '<span class="pill good">Published</span>' : '<span class="pill warn">Draft</span>') : '<span class="pill mute">No rota yet</span>'}</span>
+            <span style="margin-left:auto;display:flex;align-items:center;gap:8px"><label class="meta" for="range">Range</label>
+                <select id="range"><option value="1">This week only</option><option value="2">2 weeks</option><option value="4">4 weeks</option><option value="month">Rest of this month</option><option value="13">3 months</option></select>
+                <button class="btn btn--sm btn--primary" id="genrange">Generate range</button>
+                <button class="btn btn--sm" id="printrange">Print range</button></span>
+            <span class="meta">${r ? (r.status === "Published" ? '<span class="pill good">Published</span>' : '<span class="pill warn">Draft</span>') : '<span class="pill mute">No rota yet</span>'}</span>
         </div>`;
         if (!r) {
             $("#rp").innerHTML = nav + `<div class="card" style="padding:34px;text-align:center">
@@ -82,6 +86,9 @@
             $("#pub").addEventListener("click", () => save("Published"));
             $("#print").addEventListener("click", async () => { if (dirty) await save(st.rota.status, true); window.open(`/clinic/rotadoc?week=${st.week_start}`, "_blank"); });
         }
+        const rng = $("#range"); rng.value = rangeChoice; rng.addEventListener("change", () => { rangeChoice = rng.value; });
+        $("#genrange").addEventListener("click", () => generateRange());
+        $("#printrange").addEventListener("click", () => window.open(`/clinic/rotadoc?week=${st.week_start}&weeks=${weeksIn()}`, "_blank"));
         $("#prev").addEventListener("click", () => go(-7));
         $("#next").addEventListener("click", () => go(7));
         $$("[data-wk]").forEach((a) => a.addEventListener("click", () => go(0, a.dataset.wk)));
@@ -97,6 +104,24 @@
     async function go(days, to) {
         if (dirty && !confirm("You have unsaved changes to this rota. Leave without saving?")) return;
         await load(to || shift(week, days));
+    }
+    // number of weeks the chosen range covers, counted from the week on screen
+    function weeksIn() {
+        if (rangeChoice !== "month") return Number(rangeChoice);
+        const m = new Date(st.week_start + "T00:00:00").getMonth();
+        let n = 0, d = new Date(st.week_start + "T00:00:00");
+        while (d.getMonth() === m) { n++; d.setDate(d.getDate() + 7); }
+        return Math.max(n, 1);
+    }
+    async function generateRange() {
+        const weeks = weeksIn();
+        if (weeks === 1) return st.rota ? toast("This week already has a rota. Use Regenerate to replace it.", "warn") : generate(0);
+        if (dirty && !confirm("You have unsaved changes to this rota. Generate without saving?")) return;
+        try {
+            st = await call("management.generate_rota", { week_start: week, weeks });
+            const r = st.range_result; dirty = false; render();
+            toast(`${r.created} week${r.created === 1 ? "" : "s"} generated${r.skipped ? `, ${r.skipped} already had a rota and were kept` : ""}`);
+        } catch (e) { /* shown by call() */ }
     }
     async function generate(replace) {
         if (replace && !confirm("Replace this week's rota with a freshly generated one? Hand edits will be lost.")) return;

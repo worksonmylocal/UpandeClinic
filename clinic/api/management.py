@@ -65,18 +65,10 @@ def rota_state(week_start=None):
 	}
 
 
-@frappe.whitelist()
-def generate_rota(week_start, replace=0):
-	"""Work out the rota for a week. An existing rota is only replaced when asked."""
-	require("management")
-	settings, staff = _settings()
-	if not staff:
-		frappe.throw(_("Add the staff on the rota in Clinic Settings first"))
-	anchor = _anchor(settings)
-	monday = _monday(week_start)
+def _generate_one(staff, anchor, monday, replace):
 	existing = frappe.db.exists("Clinic Duty Rota", str(monday))
-	if existing and not int(replace):
-		frappe.throw(_("A rota already exists for the week of {0}").format(monday))
+	if existing and not replace:
+		return False
 	n = rota.weeks_since(anchor, monday)
 	built = rota.build(staff, n, [h for h in _history(anchor) if h[0] != n])
 	doc = frappe.get_doc("Clinic Duty Rota", existing) if existing else frappe.new_doc("Clinic Duty Rota")
@@ -89,7 +81,33 @@ def generate_rota(week_start, replace=0):
 		doc.append("rows", {"staff_name": s["name"], **dict(zip(rota.DAYS, built["rows"][s["name"]]))})
 	doc.flags.ignore_permissions = True
 	doc.save() if existing else doc.insert()
-	return rota_state(str(monday))
+	return True
+
+
+@frappe.whitelist()
+def generate_rota(week_start, replace=0, weeks=1):
+	"""Work out the rota for one week or several in a row (each week builds on the weekends already given out).
+	An existing week is only replaced when asked, and only for a single week."""
+	require("management")
+	settings, staff = _settings()
+	if not staff:
+		frappe.throw(_("Add the staff on the rota in Clinic Settings first"))
+	anchor = _anchor(settings)
+	monday = _monday(week_start)
+	weeks = max(1, min(int(weeks or 1), 26))
+	if weeks == 1:
+		if not _generate_one(staff, anchor, monday, int(replace)):
+			frappe.throw(_("A rota already exists for the week of {0}").format(monday))
+		return rota_state(str(monday))
+	created = skipped = 0
+	for i in range(weeks):
+		if _generate_one(staff, anchor, add_days(monday, 7 * i), False):
+			created += 1
+		else:
+			skipped += 1
+	state = rota_state(str(monday))
+	state["range_result"] = {"created": created, "skipped": skipped, "weeks": weeks}
+	return state
 
 
 @frappe.whitelist()
@@ -113,10 +131,15 @@ def save_rota(week_start, rows, on_call=None, status="Draft", notes=None):
 
 
 @frappe.whitelist()
-def rota_document(week_start):
+def rota_document(week_start, weeks=1):
+	"""One or more weeks for printing: every week in the range that has a rota."""
 	require("management")
-	state = rota_state(week_start)
-	if not state["rota"]:
-		frappe.throw(_("There is no rota for this week yet"))
-	state["clinic"] = clinic_profile()
-	return state
+	monday = _monday(week_start)
+	out = []
+	for i in range(max(1, min(int(weeks or 1), 26))):
+		state = rota_state(str(add_days(monday, 7 * i)))
+		if state["rota"]:
+			out.append(state)
+	if not out:
+		frappe.throw(_("There is no rota for this period yet"))
+	return {"clinic": clinic_profile(), "weeks": out}
