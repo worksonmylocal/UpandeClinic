@@ -72,6 +72,11 @@ PROCEDURES = [
 
 VISIT_FEES = {"mch_first_visit": 50, "mch_revisit": 0, "anc_first_visit": 350, "anc_revisit": 100}
 
+from clinic.seed_data import LAB_TEST_TYPES
+
+# the ANC profile carries the lab's own urinalysis parameters
+URINALYSIS_PARAMETERS = next(t for t in LAB_TEST_TYPES if t["test_name"] == "Urinalysis")["parameters"]
+
 # tests on the price list that the clinic did not have yet
 NEW_LAB_TESTS = [
 	{"test_name": "Fasting Blood Sugar", "category": "Biochemistry", "sample_type": "Blood", "performed_where": "Onsite",
@@ -82,14 +87,12 @@ NEW_LAB_TESTS = [
 	{"test_name": "H. Pylori Ab", "category": "Serology", "sample_type": "Serum", "performed_where": "Onsite",
 	 "parameters": [{"parameter": "H. Pylori Ab", "result_type": "Qualitative", "unit": "", "options": "Negative\nPositive"}]},
 	{"test_name": "ANC Profile", "category": "Other", "sample_type": "Blood", "performed_where": "Onsite", "requires_consent": 1,
-	 "instructions": "Antenatal profile: Hb, blood group, VDRL, urine protein and glucose, blood sugar.",
+	 "instructions": "Antenatal profile: Hb, blood group, VDRL, blood sugar and a full urinalysis.",
 	 "parameters": [
 		{"parameter": "Haemoglobin", "result_type": "Numeric", "unit": "g/dL", "normal_low": 11, "normal_high": 16},
 		{"parameter": "ABO Group", "result_type": "Qualitative", "unit": "", "options": "A\nB\nAB\nO"},
 		{"parameter": "Rhesus", "result_type": "Qualitative", "unit": "", "options": "Rh Positive\nRh Negative"},
 		{"parameter": "VDRL", "result_type": "Qualitative", "unit": "", "options": "Non-reactive\nReactive"},
-		{"parameter": "Urine Protein", "result_type": "Qualitative", "unit": "", "options": "Negative\nTrace\n1+\n2+\n3+\n4+"},
-		{"parameter": "Urine Glucose", "result_type": "Qualitative", "unit": "", "options": "Negative\nTrace\n1+\n2+\n3+"},
 		{"parameter": "Blood Sugar", "result_type": "Numeric", "unit": "mmol/L", "normal_low": 3.9, "normal_high": 7.8},
-	 ]},
+	 ] + URINALYSIS_PARAMETERS},
 ]
