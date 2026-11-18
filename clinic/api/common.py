@@ -19,6 +19,7 @@ PAGE_ROLES = {
 	"hts": ["HTS Officer"],
 	"insights": ["Clinic Doctor"],
 	"patientfiles": ["Clinic Doctor"],
+	"reports": ["Clinic Doctor", "Clinic Pharmacist", "Clinic Nurse", "Clinic Receptionist", "Clinic Lab Technician"],
 }
 
 # Clinics a patient can be sent to after triage (in addition to the doctor)
