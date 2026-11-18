@@ -13,6 +13,7 @@ window.Desk = (function () {
         { key: "insights", label: "Insights", href: "/clinic/insights" },
         { key: "patientfiles", label: "Patient Files", href: "/clinic/patientfiles" },
         { key: "reports", label: "Reports", href: "/clinic/reports" },
+        { key: "management", label: "Management", href: "/clinic/management" },
     ];
     const COLORS = { emp: "#2c6bb3", com: "#228883", ink: "#0a0a0a", warn: "#b9770e", bad: "#c4302b", good: "#1a8a3a" };
 

@@ -19,6 +19,7 @@ PAGE_ROLES = {
 	"hts": ["HTS Officer"],
 	"insights": ["Clinic Doctor"],
 	"patientfiles": ["Clinic Doctor"],
+	"management": [],  # managers only
 	"reports": ["Clinic Doctor", "Clinic Pharmacist", "Clinic Nurse", "Clinic Receptionist", "Clinic Lab Technician"],
 }
 

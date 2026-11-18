@@ -1,0 +1,85 @@
+{
+	"actions": [],
+	"creation": "2026-11-18 14:00:00.000000",
+	"doctype": "DocType",
+	"engine": "InnoDB",
+	"links": [],
+	"modified": "2026-11-18 14:00:00.000000",
+	"modified_by": "Administrator",
+	"module": "Clinic",
+	"name": "Clinic Duty Rota Row",
+	"owner": "Administrator",
+	"sort_field": "creation",
+	"sort_order": "DESC",
+	"states": [],
+	"istable": 1,
+	"editable_grid": 1,
+	"field_order": [
+		"staff_name",
+		"mon",
+		"tue",
+		"wed",
+		"thu",
+		"fri",
+		"sat",
+		"sun"
+	],
+	"fields": [
+		{
+			"fieldname": "staff_name",
+			"fieldtype": "Data",
+			"label": "Name",
+			"reqd": 1,
+			"in_list_view": 1
+		},
+		{
+			"fieldname": "mon",
+			"fieldtype": "Select",
+			"label": "Mon",
+			"options": "\nM\nA\nO\nx",
+			"in_list_view": 1
+		},
+		{
+			"fieldname": "tue",
+			"fieldtype": "Select",
+			"label": "Tue",
+			"options": "\nM\nA\nO\nx",
+			"in_list_view": 1
+		},
+		{
+			"fieldname": "wed",
+			"fieldtype": "Select",
+			"label": "Wed",
+			"options": "\nM\nA\nO\nx",
+			"in_list_view": 1
+		},
+		{
+			"fieldname": "thu",
+			"fieldtype": "Select",
+			"label": "Thu",
+			"options": "\nM\nA\nO\nx",
+			"in_list_view": 1
+		},
+		{
+			"fieldname": "fri",
+			"fieldtype": "Select",
+			"label": "Fri",
+			"options": "\nM\nA\nO\nx",
+			"in_list_view": 1
+		},
+		{
+			"fieldname": "sat",
+			"fieldtype": "Select",
+			"label": "Sat",
+			"options": "\nM\nA\nO\nx",
+			"in_list_view": 1
+		},
+		{
+			"fieldname": "sun",
+			"fieldtype": "Select",
+			"label": "Sun",
+			"options": "\nM\nA\nO\nx",
+			"in_list_view": 1
+		}
+	]
+}

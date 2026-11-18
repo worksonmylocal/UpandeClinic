@@ -1,0 +1,91 @@
+{
+	"actions": [],
+	"creation": "2026-11-18 14:00:00.000000",
+	"doctype": "DocType",
+	"engine": "InnoDB",
+	"links": [],
+	"modified": "2026-11-18 14:00:00.000000",
+	"modified_by": "Administrator",
+	"module": "Clinic",
+	"name": "Clinic Duty Rota",
+	"owner": "Administrator",
+	"sort_field": "creation",
+	"sort_order": "DESC",
+	"states": [],
+	"autoname": "field:week_start",
+	"naming_rule": "By fieldname",
+	"title_field": "week_label",
+	"track_changes": 1,
+	"field_order": [
+		"week_start",
+		"week_label",
+		"on_call",
+		"status",
+		"rows",
+		"notes"
+	],
+	"fields": [
+		{
+			"fieldname": "week_start",
+			"fieldtype": "Date",
+			"label": "Week Starting (Monday)",
+			"reqd": 1,
+			"unique": 1,
+			"in_list_view": 1
+		},
+		{
+			"fieldname": "week_label",
+			"fieldtype": "Data",
+			"label": "Rota Week",
+			"read_only": 1,
+			"in_list_view": 1
+		},
+		{
+			"fieldname": "on_call",
+			"fieldtype": "Data",
+			"label": "On Call",
+			"in_list_view": 1
+		},
+		{
+			"fieldname": "status",
+			"fieldtype": "Select",
+			"label": "Status",
+			"options": "Draft\nPublished",
+			"default": "Draft",
+			"in_list_view": 1
+		},
+		{
+			"fieldname": "rows",
+			"fieldtype": "Table",
+			"label": "Rota",
+			"options": "Clinic Duty Rota Row"
+		},
+		{
+			"fieldname": "notes",
+			"fieldtype": "Small Text",
+			"label": "Notes"
+		}
+	],
+	"permissions": [
+		{
+			"role": "System Manager",
+			"read": 1,
+			"write": 1,
+			"create": 1,
+			"delete": 1,
+			"report": 1,
+			"export": 1,
+			"print": 1
+		},
+		{
+			"role": "Clinic Manager",
+			"read": 1,
+			"write": 1,
+			"create": 1,
+			"delete": 1,
+			"report": 1,
+			"export": 1,
+			"print": 1
+		}
+	]
+}
