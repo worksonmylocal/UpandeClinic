@@ -183,6 +183,14 @@ def _encounter(doc):
 		} if doc.consultation_type != "Consultation" else None,
 		"diagnoses": [{"diagnosis": d.diagnosis, "type": d.diagnosis_type, "notes": d.notes} for d in doc.diagnoses],
 		"work_related": doc.work_related,
+		"incident": (
+			frappe.db.get_value(
+				"Clinic Incident", doc.incident,
+				["name", "report_type", "severity", "incident_date", "injury_type", "description", "work_related", "stabilization_steps", "referral_destination", "root_cause", "corrective_actions"],
+				as_dict=True,
+			)
+			if doc.get("incident") else None
+		),
 		"investigations": [
 			{
 				"investigation": r.investigation, "category": r.category, "urgency": r.urgency, "notes": r.clinical_notes,

@@ -159,7 +159,7 @@
             { label: "Sick-off Days", value: s.sick_days, color: P[5], icon: ICON('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'), unit: `${s.work_related} work-related cases` },
         ]);
         $("#seen-rows").innerHTML = d.rows.length ? `<table class="dtable"><tr><th>${one ? "Time" : "Date"}</th><th>Patient</th><th>Type</th><th>Diagnosis</th><th class="num">Sick-off</th><th>Outcome</th><th></th></tr>
-            ${d.rows.map((r) => `<tr><td>${one ? timeOf(r.consultation_date) : `${esc(dateOf(r.consultation_date).slice(5))} ${timeOf(r.consultation_date)}`}</td><td><b style="color:var(--ink)">${esc(r.patient_name)}</b><br><span class="printnote">${esc(ageSex(r))}</span></td>
+            ${d.rows.map((r) => `<tr><td>${one ? timeOf(r.consultation_date) : `${esc(dateOf(r.consultation_date).slice(5))} ${timeOf(r.consultation_date)}`}</td><td><b style="color:var(--ink)">${esc(r.patient_name)}</b> ${r.incident ? pill(r.incident_type || "Accident", r.incident_severity === "Severe" || r.incident_severity === "Fatal" ? "bad" : "warn") : ""}<br><span class="printnote">${esc(ageSex(r))}</span></td>
             <td>${typeTag(r.patient_type)}</td><td>${esc(r.diagnoses || (r.consultation_type !== "Consultation" ? r.consultation_type : "—"))}</td><td class="num">${r.sick_leave_days || "—"}</td>
             <td>${outcome(r)}</td>${fileCell(r)}</tr>`).join("")}</table>` : empty("No patients seen in this period.");
         bindFiles($("#seen-rows"));
@@ -303,6 +303,7 @@
                         <button class="subtab" data-p="exam">Physical Examination</button>
                         ${medical ? '<button class="subtab" data-p="med">Medical Examination</button>' : ""}
                         <button class="subtab" data-p="dx">Diagnosis <span class="dotc" id="c-dx" style="display:none"></span></button>
+                        <button class="subtab" data-p="inc">Accident / Incident <span class="dotc" id="c-inc" style="display:none"></span></button>
                         <button class="subtab" data-p="plan">Plan | Treatment <span class="dotc" id="c-inv" style="display:none"></span></button>
                         <button class="subtab" data-p="rx">Prescriptions <span class="dotc" id="c-rx" style="display:none"></span></button>
                         <button class="subtab" data-p="review">Review Results <span class="dotc" id="c-rev" style="display:none"></span></button>
@@ -378,6 +379,38 @@
                         ${locked ? "" : `<div class="field"><input class="input" id="dx-add" placeholder="Search or add a diagnosis…"></div>`}
                         <div id="dx-rows"></div>
                         ${isEmp ? field("work_related", "Work-related condition / injury on duty", { type: "checkbox", value: c.work_related }) : ""}
+                    </div>
+                    <div class="subpanel" id="sp-inc">
+                        ${(() => {
+                            const inc = ws.incident || {}, pre = (!ws.incident && ws.incident_prefill) || {};
+                            const v = (k, d = "") => (inc[k] != null && inc[k] !== "" ? inc[k] : pre[k] != null ? pre[k] : d);
+                            return `
+                        <div class="printnote" style="margin-bottom:12px">Use this when the patient was hurt or involved in an accident or incident on the farm. It creates an <b>accident / incident record</b> linked to this consultation, which then appears in the clinic's accident reports and insights.</div>
+                        ${pre.first_aid_case ? `<div class="liveinfo" style="background:var(--info-bg);color:var(--info)">Details were filled in from first aid case <b>${esc(pre.first_aid_case)}</b>. Check them.</div>` : ""}
+                        ${field("inc_has", "This patient had an accident / incident on the farm", { type: "checkbox", value: ws.incident || pre.first_aid_case ? 1 : 0 })}
+                        <div id="inc-box" style="display:${ws.incident || pre.first_aid_case ? "block" : "none"}">
+                            ${ws.incident ? `<div class="printnote" style="margin:6px 0 10px">Record <b>${esc(inc.name)}</b></div>` : ""}
+                            <div class="grid-3">
+                                ${field("inc_report_type", "Type", { type: "select", options: ["Accident", "Incident"], value: v("report_type", "Accident") })}
+                                ${field("inc_severity", "Severity", { type: "select", options: ["", "Minor", "Moderate", "Severe", "Fatal"], value: v("severity") })}
+                                ${field("inc_date", "Date it happened", { type: "date", value: v("incident_date", String(c.consultation_date || "").slice(0, 10)) })}
+                            </div>
+                            ${field("inc_injury_type", "Injury / type of event", { value: v("injury_type"), placeholder: "e.g. Laceration to the left hand, fall from a ladder" })}
+                            ${field("inc_description", "What happened", { type: "textarea", rows: 4, required: true, value: v("description"), placeholder: "Where on the farm, what the patient was doing, how it happened" })}
+                            ${field("inc_work_related", "Happened while working (work-related)", { type: "checkbox", value: inc.name ? inc.work_related : 1 })}
+                            ${field("inc_stabilization_steps", "First aid / stabilisation given", { type: "textarea", rows: 3, value: v("stabilization_steps") })}
+                            <div class="subhead">Referral and follow-up</div>
+                            <div class="printnote" id="inc-ref" style="margin-bottom:8px"></div>
+                            ${field("inc_accompanied_by_co", "Accompanied to the facility by the clinical officer", { type: "checkbox", value: inc.accompanied_by_co })}
+                            <div class="subhead">Investigation and reporting</div>
+                            ${field("inc_root_cause", "Root cause", { type: "textarea", rows: 2, value: v("root_cause") })}
+                            ${field("inc_corrective_actions", "Corrective actions", { type: "textarea", rows: 2, value: v("corrective_actions") })}
+                            <div class="grid-2">
+                                ${field("inc_doshmis_status", "DOSHMIS reporting", { type: "select", options: ["Not Required", "Pending", "In Progress", "Filed"], value: v("doshmis_status", "Pending") })}
+                                ${field("inc_insurance_status", "Insurance", { type: "select", options: ["Not Applicable", "Ongoing", "Settled"], value: v("insurance_status", "Not Applicable") })}
+                            </div>
+                        </div>`;
+                        })()}
                     </div>
                     <div class="subpanel" id="sp-plan">
                         <div class="subhead" style="margin-top:0">Investigations — referral for labs &amp; imaging</div>
@@ -468,6 +501,20 @@
         $("#ws-form", root).addEventListener("change", () => (dirty = true));
         $("[data-f=refer_out]", root).addEventListener("change", (e) => ($("#ref-box", root).style.display = e.target.checked ? "block" : "none"));
         $("[data-f=follow_up_required]", root).addEventListener("change", (e) => ($("#fu-box", root).style.display = e.target.checked ? "block" : "none"));
+        // Accident / incident: the box, the tab marker, and the referral the doctor sets on the Plan tab
+        const incRefresh = () => {
+            const on = $("[data-f=inc_has]", root).checked;
+            $("#inc-box", root).style.display = on ? "block" : "none";
+            $("#c-inc").style.display = on ? "" : "none"; $("#c-inc").textContent = "•";
+            const out = $("[data-f=refer_out]", root).checked, fac = ($("[data-f=referral_facility]", root) || {}).value;
+            $("#inc-ref", root).textContent = out ? `Referred to ${fac || "another facility"} (set on the Plan | Treatment tab). This is copied to the incident record.` : "Not referred out. If the patient is referred, set it on the Plan | Treatment tab and it is copied to the incident record.";
+        };
+        $("[data-f=inc_has]", root).addEventListener("change", (e) => {
+            if (!e.target.checked && ws.incident && !confirm("Remove the accident / incident record for this consultation?")) { e.target.checked = true; return; }
+            incRefresh();
+        });
+        ["refer_out", "referral_facility"].forEach((f) => $(`[data-f=${f}]`, root).addEventListener("change", incRefresh));
+        incRefresh();
 
         renderInv(); renderDx(); renderRx(); renderMed(); renderReview();
         renderTimeline(ws.history);
@@ -703,7 +750,8 @@
         const el = $("#timeline");
         el.innerHTML = rows.length ? rows.map((h, i) => `<div class="tl" data-tl="${i}">
             <div class="tl__date">${esc(dateOf(h.consultation_date))} · ${esc(h.doctor_name || "")}</div>
-            <div class="tl__dx">${h.diagnoses.length ? h.diagnoses.map((d) => esc(d.diagnosis)).join(", ") : "<i>No diagnosis</i>"}</div>
+            <div class="tl__dx">${h.diagnoses.length ? h.diagnoses.map((d) => esc(d.diagnosis)).join(", ") : "<i>No diagnosis</i>"}
+                ${h.accident ? pill(h.accident.report_type + (h.accident.severity ? ` · ${h.accident.severity}` : ""), h.accident.severity === "Severe" || h.accident.severity === "Fatal" ? "bad" : "warn") : ""}</div>
             <div class="printnote">${esc(h.presenting_complaint || "")}</div>
             <div class="tl__detail">
                 ${h.management_plan ? `<div><b>Management:</b> ${esc(h.management_plan)}</div>` : ""}
@@ -711,6 +759,7 @@
                 ${h.consultation_type && h.consultation_type !== "Consultation" ? `<div><b>${esc(h.consultation_type)}:</b> ${esc(h.fitness_status || "—")}</div>` : ""}
                 ${h.refer_out ? `<div><b>Referred to:</b> ${esc(h.referral_facility || "")}</div>` : ""}
                 ${h.sick_leave_days ? `<div><b>Sick-off:</b> ${h.sick_leave_days} days</div>` : ""}
+                ${h.accident ? `<div><b>${esc(h.accident.report_type)}:</b> ${esc(h.accident.injury_type || "recorded")} (${esc(h.incident)})</div>` : ""}
                 ${h.work_related ? `<div><b>Work-related</b></div>` : ""}
             </div></div>`).join("") : empty("First visit — no earlier consultations.");
         $$(".tl", el).forEach((t) => t.addEventListener("click", () => t.classList.toggle("open")));

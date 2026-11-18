@@ -66,6 +66,7 @@
 		"tab_diagnosis",
 		"diagnoses",
 		"work_related",
+		"incident",
 		"tab_plan",
 		"sec_investigations",
 		"investigations",
@@ -447,6 +448,15 @@
 			"fieldtype": "Check",
 			"label": "Condition is Work-Related",
 			"depends_on": "eval:doc.patient_type=='Employee'"
+		},
+		{
+			"fieldname": "incident",
+			"fieldtype": "Link",
+			"label": "Accident / Incident",
+			"options": "Clinic Incident",
+			"read_only": 1,
+			"no_copy": 1,
+			"description": "Created from the Accident / Incident tab when the patient was hurt on the farm"
 		},
 		{
 			"fieldname": "tab_plan",

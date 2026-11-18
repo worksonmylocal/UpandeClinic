@@ -214,6 +214,8 @@ def workspace(visit):
 		"patient": patient,
 		"triage": triage,
 		"consultation": consultation,
+		"incident": _incident_dict(consultation.get("incident")) if consultation else None,
+		"incident_prefill": _incident_prefill(visit),
 		"history": patient_history(visit_doc.patient, exclude_visit=visit),
 		"trend": frappe.get_all(
 			"Clinic Triage",
@@ -236,12 +238,17 @@ def patient_history(patient, exclude_visit=None, limit=12):
 		filters=filters,
 		fields=["name", "visit", "consultation_date", "consultation_type", "fitness_status", "doctor",
 				"presenting_complaint", "management_plan", "refer_out", "referral_facility", "sick_leave_days",
-				"work_related", "status"],
+				"work_related", "status", "incident"],
 		order_by="consultation_date desc",
 		limit=limit,
 	)
 	for row in consultations:
 		row.doctor_name = user_name(row.doctor)
+		row.accident = (
+			frappe.db.get_value("Clinic Incident", row.incident, ["report_type", "severity", "injury_type"], as_dict=True)
+			if row.incident
+			else None
+		)
 		row.diagnoses = frappe.get_all(
 			"Clinic Consultation Diagnosis", filters={"parent": row.name}, fields=["diagnosis", "diagnosis_type"]
 		)
@@ -306,13 +313,96 @@ def _apply(doc, data):
 		])
 
 
+# ------------------------------------------------------------------ accident / incident
+INCIDENT_TEXT = ["injury_type", "description", "stabilization_steps", "root_cause", "corrective_actions"]
+INCIDENT_SELECT = ["report_type", "severity", "doshmis_status", "insurance_status"]
+
+
+def _incident_dict(name):
+	if not name or not frappe.db.exists("Clinic Incident", name):
+		return None
+	return frappe.get_doc("Clinic Incident", name).as_dict(no_nulls=True)
+
+
+def _incident_prefill(visit):
+	"""What the first aider already recorded, when the patient was sent here from the field."""
+	case = frappe.db.get_value(
+		"Clinic First Aid Case", {"clinic_visit": visit}, ["name", "nature", "description", "location", "case_datetime"], as_dict=True
+	)
+	if not case:
+		return None
+	where = f" ({case.location})" if case.location else ""
+	return {
+		"first_aid_case": case.name,
+		"injury_type": case.nature,
+		"description": f"{case.description or ''}{where}".strip(),
+		"incident_date": str(case.case_datetime)[:10],
+	}
+
+
+def _sync_incident(doc, data, final=False):
+	"""Create, update or remove the Clinic Incident that belongs to this consultation, from the Accident / Incident tab.
+
+	Drafts may be saved half-filled; closing the consultation needs the description the incident record requires."""
+	if "inc_has" not in data:
+		return
+	existing = doc.incident if doc.incident and frappe.db.exists("Clinic Incident", doc.incident) else None
+	if not cint(data.get("inc_has")):
+		if existing:
+			if frappe.db.exists("Clinic First Aid Case", {"incident": existing}):
+				frappe.throw(_("This incident is linked to a first aid case, so it cannot be removed here. Ask a clinic manager."))
+			doc.incident = None
+			frappe.db.set_value("Clinic Consultation", doc.name, "incident", None, update_modified=False)  # release the link first
+			frappe.delete_doc("Clinic Incident", existing)
+		return
+	description = clean(data.get("inc_description"))
+	if not description:
+		if final:
+			frappe.throw(_("Describe the accident or incident on the Accident / Incident tab before closing the consultation."))
+		return  # a draft: nothing to record yet
+
+	incident = frappe.get_doc("Clinic Incident", existing) if existing else frappe.new_doc("Clinic Incident")
+	incident.update(
+		{
+			"patient": doc.patient,
+			"employee_name": doc.patient_name,
+			"department": doc.department,
+			"consultation": doc.name,
+			"description": description,
+			"work_related": cint(data.get("inc_work_related", 1)),
+			"accompanied_by_co": cint(data.get("inc_accompanied_by_co")),
+			"incident_date": clean(data.get("inc_date")) or incident.get("incident_date") or str(doc.consultation_date)[:10],
+			# what the doctor decides on the Plan tab flows into the incident record
+			"referral_destination": doc.referral_facility if doc.refer_out else None,
+		}
+	)
+	for key in INCIDENT_TEXT:
+		if f"inc_{key}" in data:
+			incident.set(key, clean(data.get(f"inc_{key}")))
+	incident.description = description
+	for key in INCIDENT_SELECT:
+		value = clean(data.get(f"inc_{key}"))
+		if value:
+			incident.set(key, value)
+	incident.save() if existing else incident.insert()
+	doc.incident = incident.name
+	if incident.work_related:
+		doc.work_related = 1
+	# link the first aider's case to the record, so the field and the clinic tell one story
+	case = frappe.db.get_value("Clinic First Aid Case", {"clinic_visit": doc.visit, "incident": ["in", ["", None]]}, "name")
+	if case:
+		frappe.db.set_value("Clinic First Aid Case", case, "incident", incident.name, update_modified=False)
+
+
 @frappe.whitelist()
 def save(name, data):
 	require("consultation")
 	doc = frappe.get_doc("Clinic Consultation", name)
-	_apply(doc, frappe.parse_json(data))
+	data = frappe.parse_json(data)
+	_apply(doc, data)
+	_sync_incident(doc, data)
 	doc.save()
-	return {"name": doc.name, "status": doc.status}
+	return {"name": doc.name, "status": doc.status, "incident": doc.incident}
 
 
 @frappe.whitelist()
@@ -321,7 +411,9 @@ def action(name, action, data=None):
 	require("consultation")
 	doc = frappe.get_doc("Clinic Consultation", name)
 	if data:
-		_apply(doc, frappe.parse_json(data))
+		data = frappe.parse_json(data)
+		_apply(doc, data)
+		_sync_incident(doc, data, final=True)
 		doc.save()
 	if action == "send_to_pharmacy":
 		doc.send_to_pharmacy()
@@ -415,9 +507,10 @@ def seen(from_date=None, to_date=None, q=None):
 		"""
 		SELECT c.name AS consultation, c.visit, c.patient_name, c.patient_type, c.sex, c.age_years,
 			c.consultation_date, c.consultation_type, c.fitness_status, c.refer_out, c.sick_leave_days, c.work_related,
+			c.incident, i.report_type AS incident_type, i.severity AS incident_severity,
 			(SELECT GROUP_CONCAT(d.diagnosis SEPARATOR ', ') FROM `tabClinic Consultation Diagnosis` d
 				WHERE d.parent = c.name) AS diagnoses
-		FROM `tabClinic Consultation` c
+		FROM `tabClinic Consultation` c LEFT JOIN `tabClinic Incident` i ON i.name = c.incident
 		WHERE c.status = 'Completed' AND c.consultation_date BETWEEN %(a)s AND %(b)s
 			AND (%(q)s = '' OR c.patient_name LIKE %(like)s OR c.name LIKE %(like)s)
 		ORDER BY c.consultation_date DESC LIMIT 500
