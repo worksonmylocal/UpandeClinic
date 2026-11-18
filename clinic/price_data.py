@@ -1,40 +1,54 @@
 """Northlake Medical Centre price lists (from the clinic's printed price lists)."""
 
-# (drug, strength, listed dose, price). The price is for a whole course / pack of `dose` units;
-# injections, syrups and IV fluids are sold singly, so their course is 1.
+# (drug, strength, dose days, units of issue per dose, price per dose), from the clinic's price list.
+# One dose is `units` tablets / capsules (or a bottle, vial or ampoule) for `days` days of treatment.
+# Liquids sold by the bottle are always one unit per dose, whatever the sheet lists.
 DRUGS = [
-	("Azithromycin", "500 mg", 3, 200), ("Azithromycin", "250 mg", 3, 100), ("Azithromycin", "15 ml", 3, 100),
-	("Amoxyclav", "228 mg", 5, 150), ("Amoxyclav", "625 mg", 5, 300), ("Amoxyclav", "1000 mg", 7, 500),
-	("Amoxycillin", "500 mg", 5, 200), ("Ampiclox", "500 mg", 5, 300), ("Ampiclox", "100 ml", 5, 100),
-	("Artesunate", "60 mg", 1, 200), ("Aminophylline", "250 mg", 1, 100), ("Adrenaline", "1 ml", 1, 100),
-	("Atropine", "5 ml", 1, 100), ("Artemether", "", 3, 100), ("Benzathine Penicillin", "2.4 MU", 1, 150),
-	("Benzyl Penicillin", "1,000,000 IU", 1, 100), ("Buscopan (Hyoscine)", "", 1, 100),
-	("Cefuroxime", "500 mg", 1, 300), ("Cefuroxime", "100 ml", 5, 150), ("Cefixime", "400 mg", 5, 200),
-	("Cefixime", "200 mg", 5, 150), ("Cephalexin", "500 mg", 5, 200), ("Cephalexin", "100 ml", 5, 100),
-	("Ciprofloxacin", "500 mg", 5, 300), ("Chlorpheniramine", "10 mg", 1, 150), ("Carbamazepine", "200 mg", 30, 200),
-	("Carvedilol", "12.5 mg", 30, 150), ("Carvedilol", "6.25 mg", 30, 400),
-	("Clarithromycin", "500 mg", 14, 300), ("CTX", "960 mg", 5, 100), ("CTX", "100 ml", 5, 50),
-	("Ceftriaxone", "1 g", 1, 200), ("Doxycycline", "100 mg", 5, 100), ("Diclofenac Inj", "75 mg", 1, 100),
-	("Domperidone", "10 mg", 3, 150), ("Dexamethasone Inj", "5 mg/ml", 1, 100), ("Diazepam", "10 mg/ml", 1, 100),
-	("Diazepam Tabs", "5 mg", 3, 100), ("Erythromycin", "500 mg", 5, 300), ("Erythromycin", "250 mg", 5, 250),
-	("Erythromycin", "100 ml", 5, 150), ("Ferroliz Tabs", "", 30, 150), ("Flucloxacillin", "500 mg", 5, 350),
-	("Furosemide", "20 mg", 10, 150), ("Fluconazole", "200 mg", 5, 200), ("Fluconazole", "150 mg", 3, 150),
-	("Flucloxacillin", "250 mg", 5, 250), ("Flucloxacillin", "100 ml", 5, 150), ("Gentamicin", "80 mg", 1, 100),
-	("Glucomet", "500 mg", 28, 150), ("Griseofulvin", "500 mg", 30, 300), ("Griseofulvin", "250 mg", 30, 200),
-	("Griseofulvin", "125 mg", 30, 100), ("Gastrogel", "10 ml", 5, 100), ("Enalapril", "5 mg", 30, 150),
-	("Esomeprazole Inj", "20 mg", 1, 100), ("Hemoforce", "200 ml", 7, 250), ("Hydrocortisone Inj", "100 mg", 1, 100),
-	("IV Ringers Lactate", "500 ml", 1, 200), ("IV Dex 5%", "500 ml", 1, 200), ("IV Normal Saline", "500 ml", 1, 200),
+	("Azithromycin", "500 mg", 3, 3, 200), ("Azithromycin", "250 mg", 3, 3, 100), ("Azithromycin", "15 ml", 3, 1, 100),
+	("Amoxyclav", "228 mg", 5, 1, 150), ("Amoxyclav", "625 mg", 5, 10, 300), ("Amoxyclav", "1000 mg", 7, 10, 500),
+	("Amoxycillin", "500 mg", 5, 15, 200), ("Ampiclox", "500 mg", 5, 15, 300), ("Ampiclox", "100 ml", 5, 1, 100),
+	("Artesunate", "60 mg", 1, 1, 800), ("Aminophylline", "250 mg", 1, 1, 100), ("Adrenaline", "1 ml", 1, 1, 100),
+	("Atropine", "5 ml", 1, 1, 100), ("Artemether", "", 3, 1, 100), ("Benzathine Penicillin", "2.4 MU", 1, 1, 150),
+	("Benzyl Penicillin", "1,000,000 IU", 1, 1, 100), ("Buscopan (Hyoscine)", "", 1, 1, 100),
+	("Cefuroxime", "500 mg", 1, 10, 300), ("Cefuroxime", "100 ml", 5, 1, 150), ("Cefixime", "400 mg", 5, 10, 300),
+	("Cefixime", "200 mg", 5, 10, 150), ("Cephalexin", "500 mg", 5, 10, 200), ("Cephalexin", "100 ml", 5, 1, 100),
+	("Ciprofloxacin", "500 mg", 5, 10, 300), ("Chlorpheniramine", "10 mg", 1, 1, 150), ("Carbamazepine", "200 mg", 30, 30, 400),
+	("Carvedilol", "12.5 mg", 30, 30, 150), ("Carvedilol", "6.25 mg", 30, 30, 400),
+	("Clarithromycin", "500 mg", 14, 14, 300), ("CTX", "960 mg", 5, 10, 100), ("CTX", "100 ml", 5, 1, 50),
+	("Ceftriaxone", "1 g", 3, 1, 200), ("Doxycycline", "100 mg", 5, 10, 100), ("Diclofenac Inj", "75 mg", 1, 1, 100),
+	("Domperidone", "10 mg", 3, 9, 150), ("Dexamethasone Inj", "8 mg/2 ml", 1, 1, 100), ("Diazepam", "10 mg/ml", 1, 1, 100),
+	("Diazepam Tabs", "5 mg", 3, 9, 100), ("Erythromycin", "500 mg", 5, 10, 300), ("Erythromycin", "250 mg", 5, 10, 250),
+	("Erythromycin", "100 ml", 5, 1, 150), ("Ferroliz Tabs", "", 30, 30, 150), ("Flucloxacillin", "500 mg", 5, 10, 350),
+	("Furosemide", "20 mg", 30, 30, 150), ("Fluconazole", "200 mg", 5, 5, 200), ("Fluconazole", "150 mg", 3, 1, 150),
+	("Flucloxacillin", "250 mg", 5, 10, 250), ("Flucloxacillin", "100 ml", 5, 1, 150), ("Gentamicin", "80 mg", 1, 1, 100),
+	("Glucomet", "500 mg", 28, 28, 150), ("Griseofulvin", "500 mg", 30, 30, 300), ("Griseofulvin", "250 mg", 30, 30, 200),
+	("Griseofulvin", "125 mg", 30, 30, 100), ("Gastrogel", "10 ml", 5, 1, 100), ("Enalapril", "5 mg", 30, 30, 150),
+	("Esomeprazole Inj", "20 mg", 1, 1, 100), ("Hemoforce", "200 ml", 7, 1, 250), ("Hydrocortisone Inj", "100 mg", 1, 1, 100),
+	("IV Ringers Lactate", "500 ml", 1, 1, 200), ("IV Dex 5%", "500 ml", 1, 1, 200), ("IV Normal Saline", "500 ml", 1, 1, 200),
+	("Norfloxacin", "400 mg", 5, 10, 150), ("Nogluc (Glibenclamide)", "5 mg", 28, 28, 200), ("Pregabalin", "75 mg", 30, 30, 200),
+	("Paracetamol Inj Infusion", "", 1, 1, 100), ("Tramadol Inj", "100 mg", 1, 1, 100), ("H. pylori Kit", "", 14, 14, 2000),
+	("Methyldopa", "250 mg", 30, 30, 150), ("Metoclopramide Inj", "", 1, 1, 100), ("Metronidazole Inj", "100 ml", 1, 1, 100),
+	("Nitrofurantoin", "100 mg", 5, 10, 100), ("Tranexamic Acid", "500 mg", 1, 1, 100), ("Presartan H", "50 mg", 28, 28, 150),
+	("Clindamycin", "300 mg", 5, 10, 400), ("Ventolin Inhaler", "", 1, 1, 300), ("Symbicort Inhaler", "", 30, 1, 3200),
 ]
+# sheet drug + strength -> the Item that already exists for it (the stock list and earlier price lists name some differently)
+ITEM_ALIASES = {
+	"Norfloxacin 400 mg": "norfloxacin", "Nitrofurantoin 100 mg": "nitrofurantoin", "Methyldopa 250 mg": "Methyldopa 250 mg",
+	"H. pylori Kit": "H. pylori Kit", "Tramadol Inj 100 mg": "tramadol inj", "Paracetamol Inj Infusion": "iv paracetamol infusion",
+	"Metronidazole Inj 100 ml": "IV Metronidazole 500 mg", "Tranexamic Acid 500 mg": "Tranexamic Acid Inj 500 mg",
+	"Dexamethasone Inj 8 mg/2 ml": "Dexamethasone Inj 5 mg/ml",
+}
 # sold as a single pack (bottle, sachet) whatever the days of treatment listed
 PACK_SIZES = {"ml"}
 
 
-def course_qty(strength, dose):
-	return 1 if strength.split(" ")[-1] in PACK_SIZES else dose
+def course_qty(strength, units):
+	return 1 if strength.split(" ")[-1] in PACK_SIZES else units
 
 
 def item_name(drug, strength):
-	return f"{drug} {strength}".strip()
+	name = f"{drug} {strength}".strip()
+	return ITEM_ALIASES.get(name, name)
 
 
 # lab test type -> price. Free tests carry no charge, so they are left out.

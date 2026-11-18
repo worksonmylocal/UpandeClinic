@@ -11,7 +11,7 @@ dispensed) using the current prices, so nothing depends on the order things were
 import frappe
 from frappe import _
 from frappe.model.naming import make_autoname
-from frappe.utils import flt, now_datetime
+from frappe.utils import cint, flt, now_datetime
 
 ORDER = {"Consultation": 0, "Visit Fee": 1, "Procedure": 2, "Lab Test": 3, "Drug": 4}
 
@@ -37,13 +37,13 @@ def procedure_prices():
 
 
 def drug_courses():
-	"""{drug: (price, units in a course/pack)}. The price covers the whole course or pack."""
+	"""{drug: (price per dose, units of issue in a dose)}. The price covers the whole dose."""
 	return {r.drug: (flt(r.price), flt(r.course_qty) or 1.0) for r in _pricing().drug_prices}
 
 
 def drug_info():
-	"""{drug: {price, course_qty, strength}} for the medicine search."""
-	return {r.drug: {"price": flt(r.price), "course_qty": flt(r.course_qty) or 1.0, "strength": r.strength} for r in _pricing().drug_prices}
+	"""{drug: {price, course_qty (units per dose), dose_days, strength}} for the medicine search and prescribing."""
+	return {r.drug: {"price": flt(r.price), "course_qty": flt(r.course_qty) or 1.0, "dose_days": cint(r.dose_days), "strength": r.strength} for r in _pricing().drug_prices}
 
 
 def drug_prices():

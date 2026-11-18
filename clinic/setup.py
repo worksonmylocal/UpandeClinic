@@ -42,7 +42,7 @@ def load_price_lists():
 	pricing = frappe.get_single("Clinic Pricing")
 
 	pricing.set("drug_prices", [])
-	for drug, strength, dose, price in price_data.DRUGS:
+	for drug, strength, days, units, price in price_data.DRUGS:
 		name = price_data.item_name(drug, strength)
 		try:
 			if not frappe.db.exists("Item", name):
@@ -52,7 +52,7 @@ def load_price_lists():
 		except Exception as e:  # one bad item must not stop the rest, or the update
 			failed.append(f"{name}: {e}")
 			continue
-		pricing.append("drug_prices", {"drug": name, "drug_name": name, "strength": strength, "course_qty": price_data.course_qty(strength, dose), "price": price})
+		pricing.append("drug_prices", {"drug": name, "drug_name": name, "strength": strength, "dose_days": days, "course_qty": price_data.course_qty(strength, units), "price": price})
 
 	for test in price_data.NEW_LAB_TESTS:
 		if not frappe.db.exists("Clinic Lab Test Type", test["test_name"]):

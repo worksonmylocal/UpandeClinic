@@ -7,6 +7,7 @@
 		"drug",
 		"drug_name",
 		"strength",
+		"dose_days",
 		"course_qty",
 		"price"
 	],
@@ -34,24 +35,31 @@
 			"in_list_view": 1
 		},
 		{
+			"fieldname": "dose_days",
+			"fieldtype": "Int",
+			"label": "Dose (Days)",
+			"in_list_view": 1,
+			"description": "Days of treatment one dose covers. Filled in when this drug is prescribed."
+		},
+		{
 			"fieldname": "course_qty",
 			"fieldtype": "Float",
-			"label": "Dose (units in a course/pack)",
+			"label": "Units per Dose",
 			"default": "1",
 			"in_list_view": 1,
-			"description": "The price below is for this many units. Charged pro rata for a part course."
+			"description": "Tablets, capsules, bottles... handed out in one dose. The price below is for this many units, and is charged pro rata for a part dose."
 		},
 		{
 			"fieldname": "price",
 			"fieldtype": "Currency",
-			"label": "Price per course / pack",
+			"label": "Price per Dose",
 			"reqd": 1,
 			"in_list_view": 1,
-			"description": "Charged on top of the consultation, for each unit dispensed"
+			"description": "Charged on top of the consultation, for each dose dispensed"
 		}
 	],
 	"links": [],
-	"modified": "2026-09-30 15:49:23.181683",
+	"modified": "2026-11-18 16:00:00.000000",
 	"modified_by": "Administrator",
 	"module": "Clinic",
 	"name": "Clinic Drug Price",

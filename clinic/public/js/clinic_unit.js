@@ -451,7 +451,7 @@
             });
             suggest($("#rx-add"), {
                 fetch: (q) => call("consultation.search_drugs", { q }, { quiet: true }).catch(() => []),
-                render: (i) => ({ main: i.item_name, sub: [i.strength, Number(i.price) ? `KSh ${i.price}${Number(i.course_qty) > 1 ? " per course of " + i.course_qty : ""}` : "no price set"].filter(Boolean).join(" · ") }),
+                render: (i) => ({ main: i.item_name, sub: [i.strength, Number(i.dose_days) > 0 ? i.dose_days + (i.dose_days > 1 ? " days" : " day") : "", Number(i.price) ? `KSh ${i.price}${Number(i.course_qty) > 1 ? " per dose of " + i.course_qty : ""}` : "no price set"].filter(Boolean).join(" · ") }),
                 onPick: (i) => { addRx(i); $("#rx-add").value = ""; },
             });
         }
@@ -516,7 +516,7 @@
     // ---- prescriptions
     function addRx(item) {
         const course = Number(item.course_qty) > 1 ? Number(item.course_qty) : "";
-        state.rx.push({ drug: item.name, drug_name: item.item_name, dose: item.strength || "", route: "Oral", frequency: "", duration_days: "", quantity: course, instructions: "", _qtyTouched: !!course });
+        state.rx.push({ drug: item.name, drug_name: item.item_name, dose: item.strength || "", route: "Oral", frequency: "", duration_days: item.dose_days > 0 ? item.dose_days : "", quantity: course, instructions: "", _qtyTouched: !!course });
         dirty = true; renderRx(); refreshActions();
     }
     function autoQty(i) {

@@ -211,7 +211,7 @@
                 ${p.allergies ? `<div class="liveinfo" style="background:var(--bad-bg);color:var(--bad)">⚠ Known allergies: <b>${esc(p.allergies)}</b> — check every item before dispensing.</div>` : ""}
                 ${d.diagnoses.length ? `<div class="printnote" style="margin-bottom:14px">Diagnosis: ${d.diagnoses.map(esc).join(", ")}</div>` : ""}
                 <table class="rtable"><tr><th>Medicine</th><th>Dose</th><th>Frequency</th><th>Days</th><th>Prescribed</th><th style="width:110px">${done ? "Dispensed" : "Dispense qty"}</th>${done ? "" : '<th title="Patient will buy this from a pharmacy of their choice">Not in stock</th>'}</tr>
-                ${d.items.map((r) => `<tr data-item-row="${esc(r.name)}"><td><b style="color:var(--ink)">${esc(r.drug_name || r.drug)}</b>${d.prices[r.drug] ? ` <span class="pill info">${(d.courses[r.drug] || {}).course_qty > 1 ? `${money(d.courses[r.drug].price)} per course of ${d.courses[r.drug].course_qty}` : `${money(d.prices[r.drug])}/unit`}</span>` : ""}
+                ${d.items.map((r) => `<tr data-item-row="${esc(r.name)}"><td><b style="color:var(--ink)">${esc(r.drug_name || r.drug)}</b>${d.prices[r.drug] ? ` <span class="pill info">${(d.courses[r.drug] || {}).course_qty > 1 ? `${money(d.courses[r.drug].price)} per dose of ${d.courses[r.drug].course_qty}` : `${money(d.prices[r.drug])}/unit`}</span>` : ""}
                     ${r.route && r.route !== "Oral" ? `<br><span class="printnote">${esc(r.route)}</span>` : ""}${r.instructions ? `<br><span class="printnote">${esc(r.instructions)}</span>` : ""}</td>
                     <td>${esc(r.dose || "")}</td><td>${esc(r.frequency || "")}</td><td>${r.duration_days || ""}</td>
                     <td>${r.prescribed_qty} ${esc(r.uom || "")}</td>
