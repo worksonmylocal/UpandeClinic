@@ -153,6 +153,18 @@
    "collapsible": 1,
    "indent": 0,
    "keep_closed": 0,
+   "label": "Dependants",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link",
+   "link_to": "Clinic Patient",
+   "route_options": "{\"is_dependant\": 1}"
+  },
+  {
+   "child": 1,
+   "collapsible": 1,
+   "indent": 0,
+   "keep_closed": 0,
    "label": "Visit",
    "link_type": "DocType",
    "show_arrow": 0,
@@ -436,6 +448,28 @@
    "link_to": "Immunization Coverage"
   },
   {
+   "child": 1,
+   "collapsible": 1,
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Clinic Waived Fees",
+   "link_type": "Report",
+   "show_arrow": 0,
+   "type": "Link",
+   "link_to": "Clinic Waived Fees"
+  },
+  {
+   "child": 1,
+   "collapsible": 1,
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Clinic Dependants Cost",
+   "link_type": "Report",
+   "show_arrow": 0,
+   "type": "Link",
+   "link_to": "Clinic Dependants Cost"
+  },
+  {
    "child": 0,
    "collapsible": 1,
    "indent": 0,
@@ -540,7 +574,7 @@
    "icon": "settings"
   }
  ],
- "modified": "2026-10-07 10:47:58.659093",
+ "modified": "2026-11-18 18:00:00.000000",
  "modified_by": "Administrator",
  "module": "Clinic",
  "name": "Clinic",

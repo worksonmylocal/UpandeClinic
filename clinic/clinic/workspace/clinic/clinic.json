@@ -1,7 +1,7 @@
 {
  "app": "clinic",
  "charts": [],
- "content": "[{\"id\": \"LXjLJH8VEq\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Clinic Desks</b></span>\", \"col\": 12}}, {\"id\": \"dan3Seqzjn\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Triage Desk\", \"col\": 3}}, {\"id\": \"lShDFMOoDN\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Doctor Desk\", \"col\": 3}}, {\"id\": \"J7eo85e0Fu\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Lab Desk\", \"col\": 3}}, {\"id\": \"03tQeB28dO\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Pharmacy Desk\", \"col\": 3}}, {\"id\": \"a7gyY4kX94\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Antenatal Clinic Desk\", \"col\": 3}}, {\"id\": \"s51fCS2Qkd\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"MCH & Postnatal Desk\", \"col\": 3}}, {\"id\": \"r9PEm2EPGi\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"TB Clinic Desk\", \"col\": 3}}, {\"id\": \"vjnGHaf5kJ\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"w4icwrk56g\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"40yCPv31yK\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Patient Journey</b></span>\", \"col\": 12}}, {\"id\": \"RT24CFDsou\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Clinic Attendance\", \"col\": 3}}, {\"id\": \"bnShAfNESq\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Clinic Patient\", \"col\": 3}}, {\"id\": \"pBv7FLlgXK\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Clinic Visit\", \"col\": 3}}, {\"id\": \"5OmCKfcpPd\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Clinic Triage\", \"col\": 3}}, {\"id\": \"I0rCCDLdIC\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Clinic Consultation\", \"col\": 3}}, {\"id\": \"tLw5M5KE5E\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Clinic Lab Test\", \"col\": 3}}, {\"id\": \"GwxsA6vezT\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Clinic Dispensing\", \"col\": 3}}, {\"id\": \"ZH4ecJj80x\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Clinic Appointment\", \"col\": 3}}, {\"id\": \"Ypp1P4VOw8\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"4zU2obrKRV\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Reports &amp; Setup</b></span>\", \"col\": 12}}, {\"id\": \"l4EJE0Ctvi\", \"type\": \"card\", \"data\": {\"card_name\": \"Reports\", \"col\": 4}}, {\"id\": \"eCu8t4IdtD\", \"type\": \"card\", \"data\": {\"card_name\": \"Setup\", \"col\": 4}}]",
+ "content": "[{\"id\": \"LXjLJH8VEq\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Clinic Desks</b></span>\", \"col\": 12}}, {\"id\": \"dan3Seqzjn\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Triage Desk\", \"col\": 3}}, {\"id\": \"lShDFMOoDN\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Doctor Desk\", \"col\": 3}}, {\"id\": \"J7eo85e0Fu\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Lab Desk\", \"col\": 3}}, {\"id\": \"03tQeB28dO\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Pharmacy Desk\", \"col\": 3}}, {\"id\": \"a7gyY4kX94\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Antenatal Clinic Desk\", \"col\": 3}}, {\"id\": \"s51fCS2Qkd\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"MCH & Postnatal Desk\", \"col\": 3}}, {\"id\": \"r9PEm2EPGi\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"TB Clinic Desk\", \"col\": 3}}, {\"id\": \"vjnGHaf5kJ\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"w4icwrk56g\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"40yCPv31yK\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Patient Journey</b></span>\", \"col\": 12}}, {\"id\": \"RT24CFDsou\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Clinic Attendance\", \"col\": 3}}, {\"id\": \"bnShAfNESq\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Clinic Patient\", \"col\": 3}}, {\"id\": \"xHVLqTifKt\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Dependants\", \"col\": 3}}, {\"id\": \"pBv7FLlgXK\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Clinic Visit\", \"col\": 3}}, {\"id\": \"5OmCKfcpPd\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Clinic Triage\", \"col\": 3}}, {\"id\": \"I0rCCDLdIC\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Clinic Consultation\", \"col\": 3}}, {\"id\": \"tLw5M5KE5E\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Clinic Lab Test\", \"col\": 3}}, {\"id\": \"GwxsA6vezT\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Clinic Dispensing\", \"col\": 3}}, {\"id\": \"ZH4ecJj80x\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Clinic Appointment\", \"col\": 3}}, {\"id\": \"Ypp1P4VOw8\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"4zU2obrKRV\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Reports &amp; Setup</b></span>\", \"col\": 12}}, {\"id\": \"l4EJE0Ctvi\", \"type\": \"card\", \"data\": {\"card_name\": \"Reports\", \"col\": 4}}, {\"id\": \"eCu8t4IdtD\", \"type\": \"card\", \"data\": {\"card_name\": \"Setup\", \"col\": 4}}]",
  "creation": "2026-09-29 19:48:54.784253",
  "custom_blocks": [],
  "docstatus": 0,
@@ -126,6 +126,24 @@
    "is_query_report": 1,
    "label": "Immunization Coverage",
    "link_to": "Immunization Coverage",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Clinic Waived Fees",
+   "link_to": "Clinic Waived Fees",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Clinic Dependants Cost",
+   "link_to": "Clinic Dependants Cost",
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
@@ -265,7 +283,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-10-07 10:47:58.659093",
+ "modified": "2026-11-18 18:00:00.000000",
  "modified_by": "Administrator",
  "module": "Clinic",
  "name": "Clinic",
@@ -333,6 +351,13 @@
    "label": "Clinic Patient",
    "link_to": "Clinic Patient",
    "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Dependants",
+   "type": "URL",
+   "url": "/desk/clinic-patient?is_dependant=1"
   },
   {
    "color": "Grey",
