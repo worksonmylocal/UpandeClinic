@@ -543,3 +543,16 @@ def set_tb_screening(name, code):
 		"status": doc.status,
 		"visit_status": frappe.db.get_value("Clinic Visit", doc.visit, "status"),
 	}
+
+
+@frappe.whitelist()
+def sick_leave_preview(patient, days=0, work_related=0):
+	"""What the HR leave will look like for a sick-off: balances plus how the days split."""
+	require("consultation")
+	from clinic import hr_leave
+
+	b = hr_leave.balances(patient)
+	if not b:
+		return None
+	p = hr_leave.plan(patient, days, work_related)
+	return {"full": b["full"], "half": b["half"], "parts": p["parts"]}

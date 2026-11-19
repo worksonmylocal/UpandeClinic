@@ -72,6 +72,7 @@
 		"appointment",
 		"section_17",
 		"sick_leave_days",
+		"hr_leave_applications",
 		"column_18",
 		"light_duty_days",
 		"procedures",
@@ -482,6 +483,14 @@
 			"description": "Days off work recommended"
 		},
 		{
+			"fieldname": "hr_leave_applications",
+			"fieldtype": "Small Text",
+			"label": "HR Leave Applications",
+			"read_only": 1,
+			"no_copy": 1,
+			"description": "Created in HR when the consultation was closed"
+		},
+		{
 			"fieldname": "column_18",
 			"fieldtype": "Column Break"
 		},
@@ -558,7 +567,7 @@
 		}
 	],
 	"links": [],
-	"modified": "2026-11-17 09:00:00.000000",
+	"modified": "2026-11-19 16:00:00.000000",
 	"modified_by": "Administrator",
 	"module": "Clinic",
 	"name": "Clinic Consultation",

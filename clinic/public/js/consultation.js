@@ -420,7 +420,8 @@
                         </div>
                         ${isEmp ? `<div class="subhead">Employee work status</div><div class="grid-2">
                             ${field("sick_leave_days", "Sick-off days recommended", { type: "number", value: c.sick_leave_days || "", attrs: 'min="0"' })}
-                            ${field("light_duty_days", "Light duty days", { type: "number", value: c.light_duty_days || "", attrs: 'min="0"' })}</div>` : ""}
+                            ${field("light_duty_days", "Light duty days", { type: "number", value: c.light_duty_days || "", attrs: 'min="0"' })}</div>
+                            <div class="note" id="leave-box" style="display:none;margin-top:8px"></div>` : ""}
                     </div>
                     <div class="subpanel" id="sp-inc"><div id="inc-box"></div></div>
                     </fieldset>
@@ -489,9 +490,32 @@
         if (code === 1) { const tab = $(".subtab[data-p=invest]"); if (tab) tab.click(); }
     }
 
+    /* Sick-leave balance from HR, and how the sick-off will be filed there when the consultation is closed */
+    function bindLeaveBox(root) {
+        const box = $("#leave-box", root), c = ws.consultation;
+        if (!box) return;
+        let seq = 0;
+        const label = (t) => (t === "Sick Leave (Full Pay)" ? "Full Pay" : t === "Sick Leave (Half Pay)" ? "Half Pay" : t.replace("Sick Leave ", "").replace(/[()]/g, ""));
+        async function refresh() {
+            if (c.hr_leave_applications) { box.style.display = "block"; box.innerHTML = `<b>Filed in HR</b><br>${esc(c.hr_leave_applications).replace(/\n/g, "<br>")}`; return; }
+            const days = Number(($("[data-f=sick_leave_days]", root) || {}).value || 0), wr = ($("[data-f=work_related]", root) || {}).checked ? 1 : 0, mine = ++seq;
+            let r;
+            try { r = await call("consultation.sick_leave_preview", { patient: ws.patient.name, days, work_related: wr }); } catch (e) { return; }
+            if (mine !== seq) return;
+            if (!r) { box.style.display = "none"; return; }
+            const split = r.parts.map((x) => `${x.days} day${x.days === 1 ? "" : "s"} ${label(x.leave_type)} (${x.status === "Approved" ? "approved" : "draft for HR approval"})`).join(", ");
+            box.style.display = "block";
+            box.innerHTML = `<b>Sick days left in HR:</b> Full Pay ${r.full} · Half Pay ${r.half}` + (days > 0 ? `<br>On closing this consultation: ${esc(split)}` : "");
+        }
+        $("[data-f=sick_leave_days]", root)?.addEventListener("input", refresh);
+        $("[data-f=work_related]", root)?.addEventListener("change", refresh);
+        refresh();
+    }
+
     function bindWorkspace(root, locked, isEmp) {
         $$("[data-tb]", root).forEach((b) => b.addEventListener("click", () => chooseTb(Number(b.dataset.tb))));
         $("#ccc-box", root)?.addEventListener("change", (e) => toggleCcc(e.target));
+        if (isEmp) bindLeaveBox(root);
         $$(".subtab", root).forEach((b) => b.addEventListener("click", () => {
             $$(".subtab", root).forEach((x) => x.classList.toggle("on", x === b));
             $$(".subpanel", root).forEach((x) => x.classList.toggle("on", x.id === "sp-" + b.dataset.p));

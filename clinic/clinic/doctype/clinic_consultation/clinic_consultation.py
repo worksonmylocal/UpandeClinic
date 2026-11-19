@@ -4,7 +4,7 @@ from frappe.model.document import Document
 from frappe.utils import cint, getdate, nowdate
 
 from clinic.clinic.doctype.clinic_visit.clinic_visit import CLOSED_STATUSES, set_visit_status
-from clinic import billing
+from clinic import billing, hr_leave
 from clinic.encounter import check_tb_test_sent, request_tb_test
 from clinic.seed_data import MEDICAL_EXAM_TESTS
 
@@ -244,6 +244,7 @@ class ClinicConsultation(Document):
 		self.status = "Completed"
 		self.save()
 		set_visit_status(self.visit, visit_status)
+		hr_leave.file_for_consultation(self)
 
 	def create_follow_up_appointment(self):
 		if not self.follow_up_required or self.appointment:
