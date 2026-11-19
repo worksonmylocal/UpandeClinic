@@ -6,7 +6,7 @@ record (the farm's HR), the days are filed as Leave Applications:
 * Work-related cases use the "Sick Leave (Work Injury)" type.
 * Otherwise Full Pay is used first, then Half Pay for the days beyond the Full Pay balance.
 * Days covered by a balance are filed Approved (submitted) straight from the encounter.
-* Days with no balance left are filed as a draft (status Open) for HR to approve.
+* Days with no balance left are not filed at all (allow-negative is off); the consultation says so for HR.
 
 HRMS is only installed on the live site, so everything here degrades quietly when it is missing.
 """
@@ -38,7 +38,7 @@ def _remaining(employee, on_date):
 
 	rows = (get_leave_details(employee, on_date) or {}).get("leave_allocation", {})
 	out = {}
-	for leave_type in (FULL, HALF):
+	for leave_type in (FULL, HALF, INJURY):
 		r = rows.get(leave_type) or {}
 		out[leave_type] = max(0.0, flt(r.get("remaining_leaves")) - flt(r.get("leaves_pending_approval")))
 	return out
@@ -55,7 +55,7 @@ def balances(patient, on_date=None):
 	except Exception:
 		frappe.clear_last_message()
 		return None
-	return {"employee": employee, "full": left[FULL], "half": left[HALF]}
+	return {"employee": employee, "full": left[FULL], "half": left[HALF], "injury": left[INJURY]}
 
 
 def plan(patient, days, work_related=0, on_date=None):
@@ -64,17 +64,16 @@ def plan(patient, days, work_related=0, on_date=None):
 	employee = employee_for(patient)
 	if not employee or days <= 0:
 		return {"employee": employee, "parts": []}
-	if cint(work_related):
-		return {"employee": employee, "parts": [{"leave_type": INJURY, "days": days, "status": "Approved"}]}
 	left = _remaining(employee, getdate(on_date))
+	order = (INJURY,) if cint(work_related) else (FULL, HALF)
 	parts, todo = [], days
-	for leave_type in (FULL, HALF):
+	for leave_type in order:
 		take = min(todo, int(left[leave_type]))
 		if take > 0:
 			parts.append({"leave_type": leave_type, "days": take, "status": "Approved"})
 			todo -= take
-	if todo > 0:  # nothing left in either balance: HR decides
-		parts.append({"leave_type": HALF, "days": todo, "status": "Open"})
+	if todo > 0:  # no balance left: nothing is filed for these days, HR adds them by hand
+		parts.append({"leave_type": None, "days": todo, "status": "Not filed"})
 	return {"employee": employee, "parts": parts}
 
 
@@ -124,13 +123,16 @@ def _file(doc, lines):
 	if not employee:
 		return ""
 	approver = _approver(employee)
-	if not approver:
+	if not approver and any(x["leave_type"] for x in p["parts"]):
 		return _("No leave approver is set for {0}, so no leave was created in HR.").format(employee)
 	company = frappe.db.get_value("Employee", employee, "company")
 	user = frappe.session.user
 	frappe.set_user("Administrator")  # doctors have no HR permissions; the encounter is the authority
 	try:
 		for part in p["parts"]:
+			if not part["leave_type"]:
+				lines.append(_("{0} day(s) not filed: no sick leave balance left in HR. HR to add them.").format(part["days"]))
+				continue
 			end = _to_date(employee, part["leave_type"], start, part["days"])
 			la = frappe.get_doc(
 				{

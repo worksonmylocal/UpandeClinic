@@ -555,4 +555,4 @@ def sick_leave_preview(patient, days=0, work_related=0):
 	if not b:
 		return None
 	p = hr_leave.plan(patient, days, work_related)
-	return {"full": b["full"], "half": b["half"], "parts": p["parts"]}
+	return {"full": b["full"], "half": b["half"], "injury": b["injury"], "parts": p["parts"]}

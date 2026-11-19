@@ -503,9 +503,9 @@
             try { r = await call("consultation.sick_leave_preview", { patient: ws.patient.name, days, work_related: wr }); } catch (e) { return; }
             if (mine !== seq) return;
             if (!r) { box.style.display = "none"; return; }
-            const split = r.parts.map((x) => `${x.days} day${x.days === 1 ? "" : "s"} ${label(x.leave_type)} (${x.status === "Approved" ? "approved" : "draft for HR approval"})`).join(", ");
+            const split = r.parts.map((x) => x.leave_type ? `${x.days} day${x.days === 1 ? "" : "s"} ${label(x.leave_type)} (approved)` : `${x.days} day${x.days === 1 ? "" : "s"} not filed, no balance (HR adds)`).join(", ");
             box.style.display = "block";
-            box.innerHTML = `<b>Sick days left in HR:</b> Full Pay ${r.full} · Half Pay ${r.half}` + (days > 0 ? `<br>On closing this consultation: ${esc(split)}` : "");
+            box.innerHTML = `<b>Sick days left in HR:</b> Full Pay ${r.full} · Half Pay ${r.half}${r.injury ? ` · Work Injury ${r.injury}` : ""}` + (days > 0 ? `<br>On closing this consultation: ${esc(split)}` : "");
         }
         $("[data-f=sick_leave_days]", root)?.addEventListener("input", refresh);
         $("[data-f=work_related]", root)?.addEventListener("change", refresh);
