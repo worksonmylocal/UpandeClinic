@@ -30,7 +30,7 @@
         <footer class="foot"><div class="row"><span>${esc(c.clinic_name || "")}${c.branch ? " · " + esc(c.branch) : ""}</span><span>Duty rota</span></div></footer>
     </article>`; }).join("");
     const style = document.createElement("style");
-    style.textContent = `@page{size:A4 landscape;margin:12mm 12mm 28mm}.rota-print td.rc{text-align:center;font:700 16px var(--sans);padding:9px 4px}
+    style.textContent = `@page{size:A4 landscape;margin:12mm 12mm 12mm}.rota-print td.rc{text-align:center;font:700 16px var(--sans);padding:9px 4px}
     .rc-M{background:#e8f3ec;color:#1a6b3a}.rc-A{background:#fff1d9;color:#9a5b00}.rc-O{background:#fde7e6;color:#c4302b}.rc-x{background:#f1f1ee;color:#999}`;
     document.head.appendChild(style);
     msg.style.display = "none"; btn.disabled = false;

@@ -899,6 +899,53 @@ window.Desk = (function () {
         requestAnimationFrame(() => $$(".rank__fill", el).forEach((f) => (f.style.width = f.dataset.w + "%")));
     }
 
+
+    // Printable documents (the #sheet-wrap pages): lay each A4 sheet out as a table whose footer is the letterhead footer,
+    // so the footer repeats on every printed page, never overlaps the content and never adds a page of its own.
+    (function paginate() {
+        const wrap = document.getElementById("sheet-wrap");
+        if (!wrap) return;
+        const MM = 96 / 25.4;
+        // a sheet that is only a little too long for one A4 page is scaled down a touch (never below 80%) so it prints on one page
+        const fit = (sheet) => {
+            const table = sheet.querySelector(":scope > .pgtable");
+            if (!table) return;
+            const box = table.querySelector(".fitbox"), foot = table.querySelector(".foot");
+            const land = sheet.classList.contains("land");
+            const room = ((land ? 186 : 273) - 4) * MM - (foot ? foot.getBoundingClientRect().height : 0) - 6 * MM;
+            const keep = table.style.height;
+            table.style.height = "auto"; box.style.zoom = "1";
+            let h = box.getBoundingClientRect().height, z = 1;
+            if (h > room) {
+                for (const step of [0.95, 0.9, 0.85, 0.8]) {
+                    box.style.zoom = String(step);
+                    if (box.getBoundingClientRect().height <= room) { z = step; break; }
+                    z = 0;
+                }
+                if (!z) box.style.zoom = "1";  // too long for one page: it runs on to a second, with the footer on each
+            }
+            table.style.height = keep;
+        };
+        const fix = () => {
+            wrap.querySelectorAll(".sheet:not([data-paged])").forEach((sheet) => {
+                sheet.dataset.paged = "1";
+                const foot = sheet.querySelector(":scope > .foot");
+                if (!foot) return;
+                const table = document.createElement("table"); table.className = "pgtable";
+                const cell = table.createTBody().insertRow().insertCell();
+                const box = document.createElement("div"); box.className = "fitbox"; cell.appendChild(box);
+                while (sheet.firstChild && sheet.firstChild !== foot) box.appendChild(sheet.firstChild);
+                table.createTFoot().insertRow().insertCell().appendChild(foot);
+                sheet.appendChild(table);
+            });
+            wrap.querySelectorAll(".sheet").forEach(fit);
+        };
+        new MutationObserver(fix).observe(wrap, { childList: true });
+        window.Desk_refit = fix;
+        window.addEventListener("load", () => setTimeout(fix, 150));
+        fix();
+    })();
+
     return { call, esc, $, $$, num, initials, timeOf, dateOf, duration, wait, waitClass, typeTag, pill, ageSex, empty, split, money,
         toast, shell, tabs, poll, kpis, hbars, chart, stackedDatasets, stackedOptions, COLORS, modal, field, read, suggest,
         banner, masters, facilityField, procedurePicker, pickPatient, REFRESH_ICON, cfg,

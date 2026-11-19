@@ -60,7 +60,8 @@
     function orient() {
         const land = sel.value === "landscape" || (sel.value === "auto" && wideNeeded);
         document.getElementById("sheet").classList.toggle("land", land);
-        style.textContent = `@page{size:A4 ${land ? "landscape" : "portrait"};margin:12mm 12mm 28mm}`;
+        style.textContent = `@page{size:A4 ${land ? "landscape" : "portrait"};margin:12mm 12mm 12mm}`;
+        if (window.Desk_refit) window.Desk_refit();
     }
     sel.addEventListener("change", orient);
     orient();
