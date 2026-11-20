@@ -20,6 +20,7 @@ REPORTS = [
 	("Visits & clinical", "Clinic Morbidity Report", "Diagnoses by category, for the period.", DATES + [PT, {"fieldname": "diagnosis_type", "label": "Diagnosis type", "type": "select", "options": ["", "Provisional", "Confirmed"]}], False),
 	("Visits & clinical", "Clinic Referral Register", "Patients referred in and out.", DATES + [PT, {"fieldname": "direction", "label": "Direction", "type": "select", "options": ["", "In", "Out"]}], True),
 	("Visits & clinical", "Clinic Lab Test Summary", "Laboratory tests done and their results.", DATES + [PT], True),
+	("Visits & clinical", "Clinic Lab Statistics", "Malaria, SAT, Hb, RBS and urinalysis: tests done and how many were positive, low or high.", DATES + [PT], False),
 	("Visits & clinical", "TB Screening Register", "TB screening outcomes.", DATES + [PT, {"fieldname": "source", "label": "Seen at", "type": "select", "options": ["", "Consultation", "Antenatal Clinic", "MCH & Postnatal Clinic", "TB Clinic"]}], True),
 	("Visits & clinical", "Clinic Incident Report", "Accidents and incidents reported.", DATES + [PT, {"fieldname": "work_related", "label": "Work-related only", "type": "check"}], True),
 	("Mother & child", "CWC Register", "Children registered at the child welfare clinic.", [

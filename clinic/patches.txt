@@ -25,3 +25,4 @@ clinic.patches.set_clinic_store_warehouse
 clinic.patches.seed_rota_staff
 clinic.patches.update_drug_dosing
 clinic.patches.anc_profile_urinalysis
+clinic.patches.lab_statistics_parameters
