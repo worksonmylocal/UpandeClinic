@@ -370,7 +370,9 @@ a{color:inherit}
 .queue.scrolls::-webkit-scrollbar{width:6px}
 .queue.scrolls::-webkit-scrollbar-thumb{background:var(--ink-faint);border-radius:6px}
 /* Long month tables scroll inside the card with a fixed header */
-.tscroll{max-height:480px;overflow:auto;scrollbar-width:thin}
+.tscroll{max-height:440px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.tscroll .table th{position:sticky;top:0;background:var(--surface-2,#fff);z-index:1}
+.timeline{max-height:480px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
 .tscroll .dtable th{position:sticky;top:0;background:var(--surface-2);z-index:1}
 .queue > .qcard{flex-shrink:0}
 .hb--wide{grid-template-columns:150px 1fr 200px}

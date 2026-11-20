@@ -333,6 +333,21 @@ window.Desk = (function () {
         lists.forEach((q) => limitList(q));
     }).observe(document.body, { childList: true, subtree: true });
     window.addEventListener("resize", limitAll);
+
+    // Tables: any list table that is not already in a scroll box gets one (fixed header, scrolls past ~10 rows).
+    function boxTables(root) {
+        const tables = root.matches && root.matches("table.dtable,table.table") ? [root] : Array.from(root.querySelectorAll ? root.querySelectorAll("table.dtable,table.table") : []);
+        tables.forEach((t) => {
+            if (t.closest(".tscroll,.noscroll,.modal,.sheet")) return;
+            const box = document.createElement("div");
+            box.className = "tscroll";
+            t.parentNode.insertBefore(box, t);
+            box.appendChild(t);
+        });
+    }
+    boxTables(document.body);
+    new MutationObserver((mutations) => mutations.forEach((m) => m.addedNodes.forEach((n) => { if (n.nodeType === 1) boxTables(n); })))
+        .observe(document.body, { childList: true, subtree: true });
     // Card heights change once the web font has loaded, so measure again then.
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => setTimeout(limitAll, 50));
     window.addEventListener("load", () => setTimeout(limitAll, 300));
