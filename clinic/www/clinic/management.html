@@ -14,10 +14,16 @@
 <div id="topbar"></div>
 <div class="page">
   <div class="pagehead" id="pagehead"></div>
-  <div id="rp"><div class="skel"></div></div>
+  <div class="tabs">
+    <button class="tab on" data-tab="rota">Duty Rota</button>
+    <button class="tab" data-tab="stock">Receive Stock</button>
+  </div>
+  <div class="tabpanel on" id="tab-rota"><div id="rp"><div class="skel"></div></div></div>
+  <div class="tabpanel" id="tab-stock"><div id="stock"><div class="skel"></div></div></div>
 </div>
 <script>window.CLINIC = { csrf: {{ csrf_token | tojson }}, user: {{ frappe.session.user | tojson }} };</script>
 <script src="/assets/clinic/js/clinic_desk.js?v={{ asset_version }}"></script>
+<script src="/assets/clinic/js/receive_stock.js?v={{ asset_version }}"></script>
 <script src="/assets/clinic/js/management.js?v={{ asset_version }}"></script>
 </body>
 </html>

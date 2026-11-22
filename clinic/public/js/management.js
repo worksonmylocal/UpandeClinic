@@ -5,7 +5,7 @@
         page: "management",
         eyebrow: "Northlake Medical Centre · Management",
         title: "Management",
-        sub: "Duty rota: generated weekly, adjustable by hand",
+        sub: "Duty rota and Clinic Store stock",
         tools: "",
     });
 
@@ -141,5 +141,6 @@
     .rc-M{background:#e8f3ec;color:#1a6b3a;border-color:#bfe0cb}.rc-A{background:#fff1d9;color:#9a5b00;border-color:#f0d49a}.rc-O{background:#fde7e6;color:#c4302b;border-color:#f4b9b6}.rc-x{background:#f1f1ee;color:#999;border-color:#e2e2dc}.rc-e{color:#bbb}
     .rota__foot{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:14px}`;
     document.head.appendChild(style);
+    Desk.tabs((tab) => { if (tab === "stock" && window.ReceiveStock) window.ReceiveStock.open(); });
     await load();
 })();
