@@ -4,6 +4,7 @@ from frappe.model.document import Document
 from frappe.utils import add_days, cint, date_diff, getdate, nowdate
 
 from clinic.clinic.doctype.clinic_visit.clinic_visit import CLOSED_STATUSES, set_visit_status
+from clinic import stock
 from clinic.utils import age_in_months, age_text
 from clinic.encounter import (
 	check_tb_test_sent,
@@ -71,6 +72,7 @@ class ClinicAttendance(Document):
 			self.set_hts_values()
 		if self.follow_up_required and not self.appointment and getdate(self.follow_up_date) < getdate(nowdate()):
 			frappe.throw(_("Follow-up date cannot be in the past"))
+		stock.check_prescriptions(self)
 		for row in self.prescriptions:
 			if (row.quantity or 0) <= 0:
 				frappe.throw(_("Row {0}: quantity for {1} must be greater than zero").format(row.idx, row.drug))

@@ -4,7 +4,7 @@ from frappe.model.document import Document
 from frappe.utils import cint, getdate, nowdate
 
 from clinic.clinic.doctype.clinic_visit.clinic_visit import CLOSED_STATUSES, set_visit_status
-from clinic import billing, hr_leave
+from clinic import billing, hr_leave, stock
 from clinic.encounter import check_tb_test_sent, request_tb_test
 from clinic.seed_data import MEDICAL_EXAM_TESTS
 
@@ -123,6 +123,7 @@ class ClinicConsultation(Document):
 			self.medical_tests = []
 
 	def validate_prescriptions(self):
+		stock.check_prescriptions(self)
 		for row in self.prescriptions:
 			if (row.quantity or 0) <= 0:
 				frappe.throw(_("Row {0}: quantity for {1} must be greater than zero").format(row.idx, row.drug))

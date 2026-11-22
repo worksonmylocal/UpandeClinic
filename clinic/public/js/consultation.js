@@ -561,8 +561,8 @@
             });
             suggest($("#rx-add"), {
                 fetch: (q) => call("consultation.search_drugs", { q }, { quiet: true }),
-                render: (i) => ({ main: i.item_name, sub: [i.strength, Number(i.dose_days) > 0 ? i.dose_days + (i.dose_days > 1 ? " days" : " day") : "", Number(i.price) ? `KSh ${i.price}${Number(i.course_qty) > 1 ? " per dose of " + i.course_qty : ""}` : "no price set"].filter(Boolean).join(" · ") }),
-                onPick: (i) => { addRx(i); $("#rx-add").value = ""; },
+                render: (i) => ({ main: i.item_name, sub: [i.strength, Number(i.dose_days) > 0 ? i.dose_days + (i.dose_days > 1 ? " days" : " day") : "", Number(i.price) ? `KSh ${i.price}${Number(i.course_qty) > 1 ? " per dose of " + i.course_qty : ""}` : "no price set"].filter(Boolean).join(" · "), tag: Desk.stockText(i.stock), tagCls: Desk.stockCls(i.stock) }),
+                onPick: (i) => { $("#rx-add").value = ""; pickRx(i); },
                 allowNew: async (name) => {
                     const item = await call("consultation.add_drug", { drug_name: name });
                     toast(`${item.item_name} added to the medicine list`);
@@ -636,6 +636,11 @@
     }
 
     // ---- prescriptions
+    function pickRx(item) {
+        if (item.stock != null) Desk.stockCache[item.name] = { stock: item.stock, alternatives: item.alternatives || [] };
+        if (item.stock != null && item.stock <= 0) return Desk.outOfStock(item, (alt) => pickRx(alt));
+        addRx(item);
+    }
     function addRx(item) {
         // a medicine with a set dose starts with its days and units (5 days, 15 tablets...) already filled in
         const course = Number(item.course_qty) > 1 ? Number(item.course_qty) : "";
@@ -650,13 +655,19 @@
             if (q) q.value = r.quantity;
         }
     }
+    function stockWarn(r) {
+        const st = (Desk.stockCache[r.drug] || {}).stock;
+        return st != null && st > 0 && Number(r.quantity) > st ? ` <span class="printnote" style="color:var(--bad)">Only ${st} in stock, ${r.quantity} prescribed</span>` : "";
+    }
     function renderRx() {
+        const missing = state.rx.map((r) => r.drug).filter((d) => d && !(d in Desk.stockCache));
+        if (missing.length) Desk.loadStock(missing).then(() => renderRx());
         const allergies = [ws.patient.allergies, read($("#ws-form"))?.drug_allergies].filter(Boolean)[0];
         $("#rx-allergy").innerHTML = allergies ? `<div class="liveinfo" style="background:var(--bad-bg);color:var(--bad)">⚠ Allergies on record: ${esc(allergies)}</div>` : "";
         const el = $("#rx-rows");
         const routes = ["Oral", "IM", "IV", "Topical", "Rectal", "Inhalation", "Eye/Ear Drops", "Other"];
         el.innerHTML = state.rx.length ? state.rx.map((r, i) => `<div class="linebox">
-            <div class="linebox__row" style="margin-bottom:10px"><b style="color:var(--ink)">${esc(r.drug_name || r.drug)}</b><button class="iconx" data-rx-del="${i}" title="Remove">×</button></div>
+            <div class="linebox__row" style="margin-bottom:10px"><span><b style="color:var(--ink)">${esc(r.drug_name || r.drug)}</b>${Desk.stockTag((Desk.stockCache[r.drug] || {}).stock)}${stockWarn(r)}</span><button class="iconx" data-rx-del="${i}" title="Remove">×</button></div>
             <div class="grid-4">
                 <div class="field"><label>Dose</label><input data-rx="${i}" data-k="dose" value="${esc(r.dose || "")}" placeholder="500 mg"></div>
                 <div class="field"><label>Route</label><select data-rx="${i}" data-k="route">${routes.map((o) => `<option ${o === r.route ? "selected" : ""}>${o}</option>`).join("")}</select></div>

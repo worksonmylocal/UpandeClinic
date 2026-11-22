@@ -616,3 +616,7 @@ body{--accent:rgb(var(--accent-rgb));--accent-soft:rgba(var(--accent-rgb),.20);-
 .cccbox__text{display:flex;flex-direction:column;gap:2px;font-size:14px;color:var(--ink)}
 .cccbox__text small{font-size:12px;color:var(--ink-mute)}
 .actionbar__hts{display:inline-flex;align-items:center}
+
+/* Clinic Store stock beside medicines */
+.stk{font:600 11px var(--sans);padding:2px 8px;border-radius:999px;white-space:nowrap;margin-left:6px;background:rgba(10,10,10,.06);color:var(--ink-3)}
+.stk.ok{background:#e8f3ec;color:#1a6b3a} .stk.low{background:#fff1d9;color:#9a5b00} .stk.out{background:#fde7e6;color:#c4302b}

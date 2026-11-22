@@ -508,7 +508,7 @@ window.Desk = (function () {
             list.className = "suggest__list";
             const rows = items.map((it, i) => {
                 const r = render(it);
-                return `<div class="suggest__item" data-i="${i}"><span>${esc(r.main)}</span><small>${esc(r.sub || "")}</small></div>`;
+                return `<div class="suggest__item" data-i="${i}"><span>${esc(r.main)}</span><small>${esc(r.sub || "")}${r.tag ? ` <b class="stk ${r.tagCls || ""}">${esc(r.tag)}</b>` : ""}</small></div>`;
             });
             if (allowNew && query && !items.some((it) => render(it).main.toLowerCase() === query.toLowerCase())) {
                 rows.push(`<div class="suggest__item suggest__add" data-new="1">+ Add “${esc(query)}”</div>`);
@@ -961,7 +961,33 @@ window.Desk = (function () {
         fix();
     })();
 
-    return { call, esc, $, $$, num, initials, timeOf, dateOf, duration, wait, waitClass, typeTag, pill, ageSex, empty, split, money,
+    /* ---- Clinic Store stock beside medicines */
+    const stockText = (n) => (n == null ? "" : n <= 0 ? "Out of stock" : `${Number(n).toLocaleString()} in stock`);
+    const stockCls = (n) => (n == null ? "" : n <= 0 ? "out" : n < 10 ? "low" : "ok");
+    const stockTag = (n) => (n == null ? "" : `<span class="stk ${stockCls(n)}">${stockText(n)}</span>`);
+    const stockCache = {};
+    async function loadStock(drugs) {
+        const need = [...new Set(drugs.filter((d) => d && !(d in stockCache)))];
+        if (need.length) { try { Object.assign(stockCache, await call("consultation.drug_stock", { drugs: JSON.stringify(need) }, { quiet: true })); } catch (e) { /* stock is a convenience */ }
+            need.forEach((d) => { if (!(d in stockCache)) stockCache[d] = { stock: null, alternatives: [] }; });
+        }
+        return stockCache;
+    }
+    /* A medicine that is out of stock cannot be prescribed: say so and offer similar ones that are in stock. */
+    function outOfStock(item, onChoose) {
+        const alts = item.alternatives || [];
+        const h = modal({
+            title: `${item.item_name || item.name} is out of stock`,
+            sub: "It cannot be prescribed until the Clinic Store has stock again.",
+            body: alts.length
+                ? `<div style="margin-bottom:8px;color:var(--ink-3)">Similar medicines that are in stock:</div>` + alts.map((a, i) => `<div class="linebox" style="cursor:pointer" data-alt="${i}"><div class="linebox__row"><b style="color:var(--ink)">${esc(a.item_name)}</b>${stockTag(a.stock)}</div>${Number(a.price) ? `<div class="printnote">KSh ${esc(a.price)}${Number(a.course_qty) > 1 ? " per dose of " + esc(a.course_qty) : ""}</div>` : ""}</div>`).join("")
+                : `<p style="margin:0;color:var(--ink-3)">No similar medicine is in stock either. Choose another medicine or refer the patient.</p>`,
+            foot: [{ label: "Close", onClick: (hh) => hh.close() }],
+        });
+        const root = h.el || document;
+        root.querySelectorAll("[data-alt]").forEach((el) => el.addEventListener("click", () => { h.close(); onChoose(alts[Number(el.dataset.alt)]); }));
+    }
+    return { stockText, stockCls, stockTag, loadStock, outOfStock, stockCache, call, esc, $, $$, num, initials, timeOf, dateOf, duration, wait, waitClass, typeTag, pill, ageSex, empty, split, money,
         toast, shell, tabs, poll, kpis, hbars, chart, stackedDatasets, stackedOptions, COLORS, modal, field, read, suggest,
         banner, masters, facilityField, procedurePicker, pickPatient, REFRESH_ICON, cfg,
         PALETTE, LEVEL, ICO, periodToggle, smoothLine, countUp, livelyTiles, ranked };

@@ -4,7 +4,7 @@ import frappe
 from frappe import _
 from frappe.utils import add_days, cint, get_first_day, getdate, now_datetime, nowdate
 
-from clinic import billing
+from clinic import billing, stock
 from clinic.setup import ensure_drug_group
 from clinic.api.common import (
 	clean,
@@ -454,9 +454,18 @@ def search_drugs(q=""):
 		limit=15,
 	)
 	info = billing.drug_info()
+	view = stock.stock_view([i.name for i in items])
 	for item in items:
 		item.update(info.get(item.name) or {"price": 0, "course_qty": 1, "strength": None})
+		item.update(view[item.name])
 	return items
+
+
+@frappe.whitelist()
+def drug_stock(drugs):
+	"""Stock balance (and substitutes when out of stock) for the drugs already on a prescription."""
+	require_any("consultation", "antenatal", "mch", "tb")
+	return stock.stock_view(list(frappe.parse_json(drugs) or []))
 
 
 @frappe.whitelist()
