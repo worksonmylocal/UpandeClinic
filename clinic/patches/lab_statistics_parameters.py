@@ -4,8 +4,6 @@ import frappe
 
 from clinic.seed_data import LAB_TEST_TYPES
 
-ANC_FIRST = 5  # Hb, blood group, rhesus, VDRL, blood sugar come before the urinalysis rows
-
 
 def wanted(name):
 	return next(t for t in LAB_TEST_TYPES if t["test_name"] == name)["parameters"]
@@ -25,7 +23,8 @@ def execute():
 		rebuild("Urinalysis", urine)
 	if frappe.db.exists("Clinic Lab Test Type", "ANC Profile"):
 		doc = frappe.get_doc("Clinic Lab Test Type", "ANC Profile")
-		head = [p.as_dict() for p in doc.parameters][:ANC_FIRST]
+		urine_names = {u["parameter"] for u in urine}
+		head = [p.as_dict() for p in doc.parameters if p.parameter not in urine_names]  # the blood tests, however many there are
 		keys = ("parameter", "result_type", "unit", "normal_low", "normal_high", "options")
 		rebuild("ANC Profile", [{k: h.get(k) for k in keys} for h in head] + urine)
 	bat = "BAT (Brucella Agglutination Test)"

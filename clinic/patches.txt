@@ -27,3 +27,4 @@ clinic.patches.update_drug_dosing
 clinic.patches.anc_profile_urinalysis
 clinic.patches.lab_statistics_parameters
 clinic.patches.urinalysis_ph_and_anc_groups
+clinic.patches.anc_profile_hbsag

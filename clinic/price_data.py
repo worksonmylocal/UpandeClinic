@@ -87,12 +87,13 @@ NEW_LAB_TESTS = [
 	{"test_name": "H. Pylori Ab", "category": "Serology", "sample_type": "Serum", "performed_where": "Onsite",
 	 "parameters": [{"parameter": "H. Pylori Ab", "result_type": "Qualitative", "unit": "", "options": "Negative\nPositive"}]},
 	{"test_name": "ANC Profile", "category": "Other", "sample_type": "Blood", "performed_where": "Onsite", "requires_consent": 1,
-	 "instructions": "Antenatal profile: Hb, blood group, VDRL, blood sugar and a full urinalysis.",
+	 "instructions": "Antenatal profile: Hb, blood group, VDRL, HBsAg, blood sugar and a full urinalysis.",
 	 "parameters": [
 		{"parameter": "Haemoglobin", "result_type": "Numeric", "unit": "g/dL", "normal_low": 11, "normal_high": 16},
 		{"parameter": "ABO Group", "result_type": "Qualitative", "unit": "", "options": "A\nB\nAB\nO"},
 		{"parameter": "Rhesus", "result_type": "Qualitative", "unit": "", "options": "Rh Positive\nRh Negative"},
 		{"parameter": "VDRL", "result_type": "Qualitative", "unit": "", "options": "Non-reactive\nReactive"},
+		{"parameter": "HBsAg", "result_type": "Qualitative", "unit": "", "options": "Negative\nPositive"},
 		{"parameter": "Blood Sugar", "result_type": "Numeric", "unit": "mmol/L", "normal_low": 3.9, "normal_high": 7.8},
 	 ] + [dict(p, param_group="Urinalysis") for p in URINALYSIS_PARAMETERS]},
 ]
