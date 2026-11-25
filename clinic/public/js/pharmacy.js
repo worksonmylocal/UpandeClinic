@@ -19,7 +19,7 @@
         const now = new Date(), thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
         modal({
             title: "Monthly farm invoice",
-            sub: "Everything invoiced to the farm in the month, one line per encounter, with a grand total.",
+            sub: "Everything invoiced to the farm in the month, one line per employee split into consultation, lab and pharmacy cost.",
             body: `${field("mi_employer", "Farm", { type: "select", options: [{ value: "", label: "All farms (one invoice each)" }, ...(m.employers || []).map((e) => ({ value: e.name, label: e.name }))] })}
                 ${field("mi_month", "Month", { type: "month", value: thisMonth, required: true })}`,
             foot: [{ label: "Cancel" }, { label: "Open invoice to download", cls: "btn--primary", onClick: (hh) => {

@@ -293,7 +293,8 @@ def medical_certificate(consultation):
 
 @frappe.whitelist()
 def monthly_invoice(month, employer=None):
-	"""One compounded invoice per farm for a month: each encounter's total per employee, and a grand total.
+	"""One compounded invoice per farm for a month: one line per employee, split into what the farm paid for
+	consultation, lab and pharmacy (procedures are listed separately so the columns always add up to the total).
 
 	`month` is YYYY-MM. Leave `employer` empty for every farm that was invoiced in the month.
 	"""
@@ -311,7 +312,8 @@ def monthly_invoice(month, employer=None):
 		filters["employer"] = employer
 	bills = frappe.get_all(
 		"Clinic Bill", filters=filters, order_by="invoiced_on asc",
-		fields=["name", "employer", "patient", "patient_name", "visit", "total", "status", "invoiced_on"],
+		fields=["name", "employer", "patient", "patient_name", "visit", "total", "status", "invoiced_on",
+			"consultation_total", "procedure_total", "lab_total", "drug_total"],
 	)
 	dates = {v.name: v.visit_date for v in frappe.get_all("Clinic Visit", filters={"name": ["in", [b.visit for b in bills] or [""]]}, fields=["name", "visit_date"])}
 	for b in bills:
@@ -324,16 +326,28 @@ def monthly_invoice(month, employer=None):
 		by_farm[employer] = []
 	farms = []
 	for name in sorted(by_farm, key=lambda x: (x or "").lower()):
-		rows = by_farm[name]
+		bills_of_farm = by_farm[name]
 		details = frappe.db.get_value(
 			"Clinic Employer", name, ["employer_name", "address", "contact_person", "phone", "email"], as_dict=True
 		) if name else None
+		# one line per employee, however many times they were seen in the month
+		people = {}
+		for b in bills_of_farm:
+			p = people.setdefault(b.patient, {"patient_name": b.patient_name, "consultation": 0.0, "procedures": 0.0, "lab": 0.0, "pharmacy": 0.0, "total": 0.0})
+			p["consultation"] += flt(b.consultation_total)  # includes the MCH / antenatal visit fees
+			p["procedures"] += flt(b.procedure_total)
+			p["lab"] += flt(b.lab_total)
+			p["pharmacy"] += flt(b.drug_total)
+			p["total"] += flt(b.total)
+		rows = sorted(people.values(), key=lambda p: (p["patient_name"] or "").lower())
 		farms.append({
 			"employer": name, "details": details,
-			"rows": [{"date": r.visit_date, "patient_name": r.patient_name, "amount": flt(r.total), "status": r.status} for r in rows],
-			"count": len(rows),
-			"total": sum(flt(r.total) for r in rows),
-			"paid_total": sum(flt(r.total) for r in rows if r.status == "Paid"),
+			"rows": rows,
+			"count": len(bills_of_farm),  # encounters
+			"employees": len(rows),
+			"totals": {k: sum(r[k] for r in rows) for k in ("consultation", "procedures", "lab", "pharmacy", "total")},
+			"total": sum(flt(b.total) for b in bills_of_farm),
+			"paid_total": sum(flt(b.total) for b in bills_of_farm if b.status == "Paid"),
 		})
 	settings = frappe.get_cached_doc("Clinic Settings")
 	return {
