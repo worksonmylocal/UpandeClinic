@@ -94,5 +94,5 @@ NEW_LAB_TESTS = [
 		{"parameter": "Rhesus", "result_type": "Qualitative", "unit": "", "options": "Rh Positive\nRh Negative"},
 		{"parameter": "VDRL", "result_type": "Qualitative", "unit": "", "options": "Non-reactive\nReactive"},
 		{"parameter": "Blood Sugar", "result_type": "Numeric", "unit": "mmol/L", "normal_low": 3.9, "normal_high": 7.8},
-	 ] + URINALYSIS_PARAMETERS},
+	 ] + [dict(p, param_group="Urinalysis") for p in URINALYSIS_PARAMETERS]},
 ]

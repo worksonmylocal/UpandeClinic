@@ -12,7 +12,8 @@
 		"flag",
 		"normal_low",
 		"normal_high",
-		"options"
+		"options",
+		"param_group"
 	],
 	"fields": [
 		{
@@ -74,6 +75,13 @@
 			"fieldname": "options",
 			"fieldtype": "Small Text",
 			"label": "Options",
+			"hidden": 1
+		},
+		{
+			"fieldname": "param_group",
+			"fieldtype": "Data",
+			"label": "Group",
+			"read_only": 1,
 			"hidden": 1
 		}
 	],

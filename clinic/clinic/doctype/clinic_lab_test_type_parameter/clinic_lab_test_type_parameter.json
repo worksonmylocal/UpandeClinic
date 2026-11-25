@@ -9,7 +9,8 @@
 		"unit",
 		"normal_low",
 		"normal_high",
-		"options"
+		"options",
+		"param_group"
 	],
 	"fields": [
 		{
@@ -54,6 +55,12 @@
 			"label": "Allowed Results",
 			"depends_on": "eval:doc.result_type=='Qualitative'",
 			"description": "One per line, e.g. Negative / Positive"
+		},
+		{
+			"fieldname": "param_group",
+			"fieldtype": "Data",
+			"label": "Group",
+			"description": "Parameters with the same group are shown together under one expandable heading on the lab screen (e.g. Urinalysis). Leave blank to show the parameter on its own."
 		}
 	],
 	"links": [],

@@ -7,6 +7,7 @@ LAB_TEST_TYPES = [
 		"parameters": [
 			{"parameter": "Color", "result_type": "Text", "unit": ""},
 			{"parameter": "Appearance", "result_type": "Text", "unit": ""},
+			{"parameter": "pH", "result_type": "Numeric", "unit": "", "normal_low": 4.5, "normal_high": 8},
 			{"parameter": "Specific Gravity", "result_type": "Numeric", "unit": "", "normal_low": 1.005, "normal_high": 1.03},
 			{"parameter": "Leucocytes", "result_type": "Qualitative", "unit": "", "options": "Nil\n+\n++\n+++"},
 			{"parameter": "Blood", "result_type": "Qualitative", "unit": "", "options": "Negative\n+\n++\n+++"},

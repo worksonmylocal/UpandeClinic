@@ -333,6 +333,11 @@ a{color:inherit}
 .rtable td{padding:6px 8px;border-top:1px solid var(--hairline);vertical-align:middle;font-size:13px}
 .rtable input,.rtable select{padding:8px 10px;border-radius:10px;border:1px solid var(--hairline);background:var(--surface);font:400 13px var(--sans);width:100%}
 .rtable input:focus,.rtable select:focus{outline:0;border-color:var(--signal);background:#fff}
+.rtable tr[hidden]{display:none}
+.rtable tr.grp-head{cursor:pointer;background:var(--surface)}
+.rtable tr.grp-head td{padding:10px 8px}
+.rtable tr.grp-head:hover,.rtable tr.grp-head:focus{background:var(--hairline);outline:0}
+.grp-caret{display:inline-block;width:14px;color:var(--ink-mute)}
 .flagcell{font:700 11px var(--sans);min-width:70px}
 .flagcell.High,.flagcell.Low,.flagcell.Abnormal,.flagcell.Positive{color:var(--bad)}
 .flagcell.Normal,.flagcell.Negative{color:var(--good)}

@@ -181,6 +181,18 @@
         const steps = external ? ["Requested", "Sample Collected", "Sent to External", "Resulted"] : ["Requested", "Sample Collected", "Resulted"];
         const at = steps.indexOf(t.status);
         const rows = t.results || [];
+        // parameters that share a group (e.g. the urine rows of the ANC profile) sit under one expandable heading
+        const rowHtml = (r) => `<tr data-row="${esc(r.name)}"${r.param_group ? ` data-grp-row="${esc(r.param_group)}" hidden` : ""}><td${r.param_group ? ' style="padding-left:28px"' : ""}><b style="color:var(--ink)">${esc(r.parameter)}</b></td>
+                        <td>${done ? esc(r.value || "—") : resultInput(r)}</td><td>${esc(r.unit || "")}</td><td class="printnote">${esc(r.reference || "")}</td>
+                        <td class="flagcell ${esc(r.flag || "")}" id="flag-${esc(r.name)}">${esc(r.flag || "")}</td></tr>`;
+        const groupHead = (g) => `<tr class="grp-head" data-grp="${esc(g)}" role="button" tabindex="0" aria-expanded="false"><td colspan="5"><span class="grp-caret">▸</span> <b>${esc(g)}</b> <span class="printnote" data-grp-sum="${esc(g)}"></span></td></tr>`;
+        const seenGroups = new Set();
+        const rowsHtml = rows.map((r) => {
+            const g = r.param_group;
+            if (!g || seenGroups.has(g)) return rowHtml(r);
+            seenGroups.add(g);
+            return groupHead(g) + rowHtml(r);
+        }).join("");
 
         const h = modal({
             title: t.test_type,
@@ -198,9 +210,7 @@
                     <div class="field"><label>External report</label>${t.external_report ? `<a class="btn btn--sm" target="_blank" href="${esc(t.external_report)}">Open report</a>` : done ? "<small>None attached</small>" : '<input type="file" id="ext-file" accept=".pdf,.png,.jpg,.jpeg">'}</div></div>` : ""}
                 <div class="subhead">Results</div>
                 ${rows.length ? `<table class="rtable"><tr><th style="width:26%">Parameter</th><th style="width:26%">Result</th><th>Unit</th><th>Reference</th><th>Flag</th></tr>
-                    ${rows.map((r) => `<tr data-row="${esc(r.name)}"><td><b style="color:var(--ink)">${esc(r.parameter)}</b></td>
-                        <td>${done ? esc(r.value || "—") : resultInput(r)}</td><td>${esc(r.unit || "")}</td><td class="printnote">${esc(r.reference || "")}</td>
-                        <td class="flagcell ${esc(r.flag || "")}" id="flag-${esc(r.name)}">${esc(r.flag || "")}</td></tr>`).join("")}</table>` : '<div class="printnote">No parameters defined for this test.</div>'}
+                    ${rowsHtml}</table>` : '<div class="printnote">No parameters defined for this test.</div>'}
                 <div class="grid-2" style="margin-top:16px">
                     ${field("result_comments", "Comments", { type: "textarea", rows: 2, value: t.result_comments, attrs: done ? "disabled" : "" })}
                     ${field("interpretation", "Overall result", { type: "select", options: ["", "Normal", "Abnormal", "Positive", "Negative", "Inconclusive"], value: t.interpretation, attrs: done ? "disabled" : "", help: "Left blank, it is worked out from the results." })}
@@ -219,14 +229,34 @@
         Desk.facilityField(!done && external ? $("[data-f=external_facility]", h.body) : null);
         // live flags
         const byId = Object.fromEntries(rows.map((r) => [r.name, r]));
+        // "12 of 19 entered · 2 abnormal" beside each group heading, kept current as results are typed
+        const refreshGroups = () => $$("[data-grp-sum]", h.body).forEach((el) => {
+            const rs = rows.filter((r) => r.param_group === el.dataset.grpSum);
+            const val = (r) => { const i = $(`[data-res="${CSS.escape(r.name)}"]`, h.body); return String(i ? i.value : r.value || "").trim(); };
+            const filled = rs.filter((r) => val(r)).length;
+            const odd = rs.filter((r) => ["High", "Low", "Abnormal", "Positive"].includes(flagFor(r, val(r)))).length;
+            el.innerHTML = `${filled} of ${rs.length} entered${odd ? ` · <b style="color:var(--bad)">${odd} abnormal</b>` : ""}`;
+        });
+        const toggleGroup = (head) => {
+            const open = head.getAttribute("aria-expanded") !== "true";
+            head.setAttribute("aria-expanded", open);
+            $(".grp-caret", head).textContent = open ? "▾" : "▸";
+            $$("[data-grp-row]", h.body).filter((tr) => tr.dataset.grpRow === head.dataset.grp).forEach((tr) => { tr.hidden = !open; });
+        };
+        $$(".grp-head", h.body).forEach((head) => {
+            head.addEventListener("click", () => toggleGroup(head));
+            head.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleGroup(head); } });
+        });
         $$("[data-res]", h.body).forEach((inp) => {
             const upd = () => {
                 const cell = $(`#flag-${CSS.escape(inp.dataset.res)}`, h.body);
                 const f = flagFor(byId[inp.dataset.res], inp.value);
                 cell.textContent = f; cell.className = "flagcell " + f;
+                refreshGroups();
             };
             inp.addEventListener("input", upd); inp.addEventListener("change", upd);
         });
+        refreshGroups();
 
         async function submit(hh, action, stay) {
             const body = hh.body, data = read(body);

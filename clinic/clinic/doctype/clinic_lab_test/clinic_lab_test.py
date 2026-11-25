@@ -28,6 +28,7 @@ class ClinicLabTest(Document):
 						"normal_low": p.normal_low,
 						"normal_high": p.normal_high,
 						"options": p.options,
+						"param_group": p.param_group,
 					},
 				)
 
